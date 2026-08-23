@@ -15,7 +15,7 @@
     "#registry/*": "./packages/registry/src/*"
   },
   "scripts": {
-    "test": "node --disable-warning=ExperimentalWarning --test 'packages/*/test/*.test.ts'",
+    "test": "node --disable-warning=ExperimentalWarning --test 'packages/*/test/*.test.ts' 'tools/*/test/*.test.ts'",
     "dk": "./bin/dk"
   }
 }

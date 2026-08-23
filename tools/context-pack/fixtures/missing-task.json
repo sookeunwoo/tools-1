@@ -1,0 +1,5 @@
+{
+  "name": "task 없이 호출하면 계약 단계에서 막힌다",
+  "input": { "repo": "any" },
+  "expectError": "INPUT_INVALID"
+}

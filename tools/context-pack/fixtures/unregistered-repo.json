@@ -1,0 +1,5 @@
+{
+  "name": "등록되지 않은 저장소는 명확히 실패한다",
+  "input": { "repo": "존재하지-않는-저장소", "task": "테스트" },
+  "expectError": "REPO_NOT_CONFIGURED"
+}

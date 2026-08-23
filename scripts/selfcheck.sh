@@ -154,8 +154,9 @@ RESULT=$(printf '%s' "$MCPOUT" | node -e 'let s="";process.stdin.on("data",d=>s+
 
 printf '%s' "$RESULT" | grep -q '"server":"devkit"' \
   && ok "initialize 응답" || no "initialize" "server=devkit" "$RESULT"
-printf '%s' "$RESULT" | grep -q '"tools":2' \
-  && ok "tools/list — 툴 2개 노출" || no "tools/list" "2" "$RESULT"
+EXPECTED=$("$DK" list --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).length))')
+printf '%s' "$RESULT" | grep -q "\"tools\":$EXPECTED" \
+  && ok "tools/list — 툴 ${EXPECTED}개 노출 (dk list와 일치)" || no "tools/list" "$EXPECTED" "$RESULT"
 printf '%s' "$RESULT" | grep -q '"callOk":true' \
   && ok "tools/call 성공" || no "tools/call" "isError=false" "$RESULT"
 
