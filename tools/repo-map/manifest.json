@@ -1,0 +1,39 @@
+{
+  "name": "repo-map",
+  "version": "0.1.0",
+  "summary": "저장소의 타입·메서드·엔드포인트·의존성 인덱스를 만든다",
+  "whenToUse": "trace-flow를 쓰기 전에 한 번 돌려 인덱스를 만든다. 커밋이 바뀌면 다시 돌린다. 저장소에 어떤 엔드포인트가 있는지 목록으로 훑을 때도 쓴다. 특정 흐름을 따라가려는 것이면 이 툴 말고 trace-flow를 쓴다.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["repo"],
+    "properties": {
+      "repo": { "type": "string", "description": "설정에 등록된 저장소 이름" },
+      "include": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "경로 접두어 필터. 멀티모듈에서 일부만 인덱싱할 때"
+      },
+      "maxFiles": { "type": "integer", "default": 5000, "minimum": 1, "maximum": 50000 },
+      "listEndpoints": { "type": "boolean", "default": false, "description": "엔드포인트 목록을 결과에 포함" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["commitSha", "counts"],
+    "properties": {
+      "commitSha": { "type": ["string", "null"] },
+      "indexPath": { "type": "string" },
+      "counts": { "type": "object" },
+      "languages": { "type": "object" },
+      "endpoints": { "type": "array" },
+      "topGaps": { "type": "array" }
+    }
+  },
+  "sideEffects": "read",
+  "concurrency": { "mode": "exclusive", "resourceKey": "index:{repo}" },
+  "determinism": "by-commit",
+  "timeoutSec": 300,
+  "requiresApproval": false,
+  "costHint": "cpu-heavy"
+}

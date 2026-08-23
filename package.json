@@ -12,7 +12,8 @@
   },
   "imports": {
     "#core/*": "./packages/core/src/*",
-    "#registry/*": "./packages/registry/src/*"
+    "#registry/*": "./packages/registry/src/*",
+    "#lang/*": "./packages/lang/src/*"
   },
   "scripts": {
     "test": "node --disable-warning=ExperimentalWarning --test 'packages/*/test/*.test.ts' 'tools/*/test/*.test.ts'",

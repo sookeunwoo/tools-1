@@ -81,7 +81,7 @@ allow_prod_writes = false
 
 ```bash
 ./scripts/selfcheck.sh    # end-to-end 17개 검증 (격리된 임시 환경)
-npm test                  # 단위/통합 30개
+npm test                  # 단위/통합 52개
 ```
 
 ---
@@ -92,6 +92,8 @@ npm test                  # 단위/통합 30개
 
 | 툴 | 역할 | 부수효과 |
 |---|---|---|
+| **`repo-map`** | 저장소의 타입·메서드·엔드포인트·의존성 인덱스 생성. 커밋 SHA 기준 캐시 → 에이전트의 반복 탐색을 대체한다 ([상세](tools/repo-map/README.md)) | read |
+| **`trace-flow`** | 엔드포인트 → 다운스트림 호출 그래프. 트랜잭션 경계·DB 테이블·외부 시스템·리스크 포인트 ([상세](tools/trace-flow/README.md)) | read |
 | **`devkit-observe`** | 툴 사용 현황·자원 점유·실패 패턴 조회. **에이전트가 자기 자신과 다른 에이전트의 작업 상태를 파악**하는 통로 | read |
 | **`context-pack`** | 현재 작업 상태를 **4KB 이하 브리핑**으로 압축. 새 세션의 첫 프롬프트로 그대로 붙여 쓴다 → 세션 분리 비용을 없앤다 ([상세](tools/context-pack/README.md)) | read |
 | **`echo`** | 툴 계약의 참조 구현. 새 툴을 만들 때 복사해서 시작한다 | read |
@@ -100,8 +102,6 @@ npm test                  # 단위/통합 30개
 
 | 툴 | 역할 | 단계 |
 |---|---|---|
-| `repo-map` | 저장소의 심볼·엔드포인트·엔티티 인덱스 생성. 커밋 SHA 기준 캐시 | M1 |
-| **`trace-flow`** | 엔드포인트 → 다운스트림 호출 그래프. 트랜잭션 경계, 외부 호출, 리스크 포인트 | M1 |
 | **`impact-scan`** | 변경 심볼의 영향 반경 — 호출자, 테이블, 외부 시스템, 이벤트, 플래그 | M2 |
 | `contract-diff` | API/DTO/이벤트 스키마 diff + 파괴적 변경 분류 | M4 |
 | `doc-scaffold` | ADR/HLD/LLD 초안을 근거 인용 상태로 생성 | M4 |
@@ -382,8 +382,10 @@ devkit/
 
 **M0 완료** — 코어 런타임, 실행 파이프라인, CLI, MCP 서버, 관측성.
 
-**M1 진행 중** — `context-pack` v0 완료. 다음은 `repo-map` → `trace-flow`.
-`context-pack`이 근거 인용을 붙이는 건 그 둘이 나온 뒤(M2)다.
+**M1 완료** — `context-pack`, `repo-map`, `trace-flow`.
+이제 엔드포인트 하나를 지목하면 다운스트림 흐름·테이블·외부 시스템·리스크가 근거와 함께 나온다.
+
+다음은 M2 `impact-scan` (역방향 영향 반경) 과 `context-pack`에 근거 인용 붙이기.
 
 ## 라이선스
 
