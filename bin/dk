@@ -1,0 +1,8 @@
+#!/bin/sh
+# dk 런처.
+#
+# --disable-warning: node:sqlite의 ExperimentalWarning을 끈다. stderr에 섞이면
+#   에이전트가 툴 출력을 파싱할 때 잡음이 된다. JS 레벨에서 process.emitWarning을
+#   덮어쓰는 방법은 통하지 않는다(Node가 모듈 로드 시점에 내부 경로로 발행).
+exec node --disable-warning=ExperimentalWarning \
+  "$(cd "$(dirname "$0")/.." && pwd)/packages/cli/src/main.ts" "$@"

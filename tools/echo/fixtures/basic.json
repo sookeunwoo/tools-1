@@ -1,0 +1,9 @@
+{
+  "name": "단일 메시지",
+  "input": { "message": "hello" },
+  "expect": {
+    "data": { "echoed": ["hello"], "count": 1 },
+    "minEvidence": 1,
+    "confidence": 1.0
+  }
+}

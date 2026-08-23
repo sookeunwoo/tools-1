@@ -1,0 +1,8 @@
+{
+  "name": "반복 시 번호가 붙는다",
+  "input": { "message": "hi", "repeat": 3 },
+  "expect": {
+    "data": { "echoed": ["1: hi", "2: hi", "3: hi"], "count": 3 },
+    "minEvidence": 1
+  }
+}

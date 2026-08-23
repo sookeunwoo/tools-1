@@ -1,0 +1,21 @@
+{
+  "name": "devkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "1인 개발 사이클 보조 툴체인 — AI 에이전트가 호출/디버깅/수정 가능한 도구 모음",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "bin": {
+    "dk": "./bin/dk"
+  },
+  "imports": {
+    "#core/*": "./packages/core/src/*",
+    "#registry/*": "./packages/registry/src/*"
+  },
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --test 'packages/*/test/*.test.ts'",
+    "dk": "./bin/dk"
+  }
+}

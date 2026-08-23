@@ -1,0 +1,41 @@
+{
+  "name": "devkit-observe",
+  "version": "0.1.0",
+  "summary": "devkit 툴 사용 현황·자원 점유·실패 패턴을 조회한다",
+  "whenToUse": "다른 툴을 호출하기 전에 자원이 점유 중인지 확인할 때, 방금 실행한 툴이 왜 실패했는지 볼 때, 어떤 툴이 느리거나 신뢰도가 낮은지 파악할 때. 여러 에이전트가 동시에 일할 때 서로의 작업을 피해 순서를 정하는 데 쓴다.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "view": {
+        "enum": ["summary", "runs", "stats", "leases", "tools", "failures"],
+        "default": "summary",
+        "description": "summary=전체 한눈에, runs=최근 실행, stats=툴별 지표, leases=현재 점유 자원, tools=등록된 툴 목록, failures=최근 실패"
+      },
+      "sinceHours": { "type": "number", "default": 24, "minimum": 0.1, "maximum": 8760 },
+      "limit": { "type": "integer", "default": 20, "minimum": 1, "maximum": 200 },
+      "tool": { "type": "string", "description": "특정 툴로 필터" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "view": { "type": "string" },
+      "generatedAt": { "type": "string" },
+      "summary": { "type": "object" },
+      "runs": { "type": "array" },
+      "stats": { "type": "array" },
+      "leases": { "type": "array" },
+      "tools": { "type": "array" },
+      "failures": { "type": "array" },
+      "notes": { "type": "array", "items": { "type": "string" } }
+    }
+  },
+  "sideEffects": "read",
+  "concurrency": { "mode": "safe", "resourceKey": null },
+  "determinism": "nondeterministic",
+  "timeoutSec": 15,
+  "requiresApproval": false,
+  "costHint": "cheap",
+  "evidenceOptional": false
+}

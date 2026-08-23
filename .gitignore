@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+*.log
+
+# devkit 런타임 데이터 (기본 위치는 ~/.devkit 이지만 로컬 오버라이드 대비)
+.devkit/
+*.jsonl
+*.db
+*.db-wal
+*.db-shm
+
+# 다이어그램 렌더 산출물
+*.svg
+*.png

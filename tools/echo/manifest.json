@@ -1,0 +1,31 @@
+{
+  "name": "echo",
+  "version": "0.1.0",
+  "summary": "입력을 그대로 돌려주는 계약 참조 구현 (M0 검증용)",
+  "whenToUse": "devkit 자체가 정상 동작하는지 확인할 때. 새 툴을 만들 때 계약 구현의 최소 예시로 참고한다. 실제 개발 작업에는 쓸모가 없다.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["message"],
+    "properties": {
+      "message": { "type": "string", "minLength": 1 },
+      "repeat": { "type": "integer", "default": 1, "minimum": 1, "maximum": 10 },
+      "delayMs": { "type": "integer", "default": 0, "minimum": 0, "maximum": 60000,
+                   "description": "타임아웃·동시성 동작을 검증할 때 쓴다" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["echoed", "count"],
+    "properties": {
+      "echoed": { "type": "array", "items": { "type": "string" } },
+      "count": { "type": "integer" }
+    }
+  },
+  "sideEffects": "read",
+  "concurrency": { "mode": "safe", "resourceKey": null },
+  "determinism": "pure",
+  "timeoutSec": 65,
+  "requiresApproval": false,
+  "costHint": "cheap"
+}
