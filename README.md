@@ -88,14 +88,16 @@ npm test                  # 단위/통합 52개
 
 ## 툴 목록
 
+`dk run <이름>`으로 실행한다. 구현은 `plugins/<이름>/`에 있다.
+
 ### 사용 가능
 
 | 툴 | 역할 | 부수효과 |
 |---|---|---|
-| **`repo-map`** | 저장소의 타입·메서드·엔드포인트·의존성 인덱스 생성. 커밋 SHA 기준 캐시 → 에이전트의 반복 탐색을 대체한다 ([상세](tools/repo-map/README.md)) | read |
-| **`trace-flow`** | 엔드포인트 → 다운스트림 호출 그래프. 트랜잭션 경계·DB 테이블·외부 시스템·리스크 포인트 ([상세](tools/trace-flow/README.md)) | read |
+| **`repo-map`** | 저장소의 타입·메서드·엔드포인트·의존성 인덱스 생성. 커밋 SHA 기준 캐시 → 에이전트의 반복 탐색을 대체한다 ([상세](plugins/repo-map/README.md)) | read |
+| **`trace-flow`** | 엔드포인트 → 다운스트림 호출 그래프. 트랜잭션 경계·DB 테이블·외부 시스템·리스크 포인트 ([상세](plugins/trace-flow/README.md)) | read |
 | **`devkit-observe`** | 툴 사용 현황·자원 점유·실패 패턴 조회. **에이전트가 자기 자신과 다른 에이전트의 작업 상태를 파악**하는 통로 | read |
-| **`context-pack`** | 현재 작업 상태를 **4KB 이하 브리핑**으로 압축. 새 세션의 첫 프롬프트로 그대로 붙여 쓴다 → 세션 분리 비용을 없앤다 ([상세](tools/context-pack/README.md)) | read |
+| **`context-pack`** | 현재 작업 상태를 **4KB 이하 브리핑**으로 압축. 새 세션의 첫 프롬프트로 그대로 붙여 쓴다 → 세션 분리 비용을 없앤다 ([상세](plugins/context-pack/README.md)) | read |
 | **`echo`** | 툴 계약의 참조 구현. 새 툴을 만들 때 복사해서 시작한다 | read |
 
 ### 로드맵
@@ -114,13 +116,13 @@ npm test                  # 단위/통합 52개
 
 > 이 목록은 로드맵이지 약속이 아니다. **30일간 실제로 안 쓰인 툴은 삭제한다.**
 
-### 함께 사는 서비스
+### 앱 — 상주 서비스
 
-툴(`dk run ...`)과 달리 상주 프로세스로 도는 것들.
+툴과 달리 `dk run`으로 부르지 않고 프로세스로 떠 있는 것들. 구현은 `apps/<이름>/`에 있다.
 
 | 이름 | 역할 | 진입점 |
 |---|---|---|
-| **`config-provider`** | 서버 주소·비밀번호·API 키·도메인 용어를 한곳에서 관리하고 로컬에만 제공한다. 본인은 UI로 원본 평문을 즉시 보고, 에이전트에게는 화이트리스트를 통과한 값만 나간다. sops+age 암호화, UDS 데몬, MCP 서버 ([설치·사용](packages/config-provider/README.md) · [에이전트용](packages/config-provider/AGENTS.md)) | `dkc`, `dkc-mcp` |
+| **`config-provider`** | 서버 주소·비밀번호·API 키·도메인 용어를 한곳에서 관리하고 로컬에만 제공한다. 본인은 UI로 원본 평문을 즉시 보고, 에이전트에게는 화이트리스트를 통과한 값만 나간다. sops+age 암호화, UDS 데몬, MCP 서버 ([설치·사용](apps/config-provider/README.md) · [에이전트용](apps/config-provider/AGENTS.md)) | `dkc`, `dkc-mcp` |
 
 ```bash
 dkc resolve 입고지시                                   # 자연어 → key
@@ -204,7 +206,7 @@ claude mcp add devkit -- /path/to/devkit/bin/dk mcp
 printf '%s\n' \
  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-| node --disable-warning=ExperimentalWarning packages/mcp/src/stdio.ts
+| node --disable-warning=ExperimentalWarning apps/mcp/src/stdio.ts
 ```
 
 ---
@@ -255,7 +257,7 @@ devkit의 핵심 추상화. 모든 툴은 `manifest.json`(계약) + `index.ts`(�
   "hint": "index.ts의 반환값 또는 manifest.json의 outputSchema 중 하나가 틀렸습니다.",
   "retryable": false,
   "fixCommand": "dk run repo-map --repo my-service --refresh",
-  "source": { "file": "tools/trace-flow/index.ts", "line": 118 }
+  "source": { "file": "plugins/trace-flow/index.ts", "line": 118 }
 }}
 ```
 
@@ -353,40 +355,112 @@ flowchart TB
 
 ## 구조
 
+이 저장소에는 **성격이 다른 다섯 가지**가 들어 있다. 최상위 디렉터리 하나가 성격 하나를 맡는다.
+새 코드를 어디에 둘지는 "**누가 이걸 실행하거나 불러오는가**" 한 가지로 정해진다.
+
+| 디렉터리 | 누가 쓰나 | 무엇이 들어가나 | 이 이름을 쓰는 이유 |
+|---|---|---|---|
+| **`bin/`** | 사람이 터미널에서 직접 | 실행 가능한 셸 래퍼 (`dk`, `dkc`, `dkc-mcp`) | npm `bin` 필드·Rails binstubs와 같은 관행. **제품의 일부인 명령** |
+| **`apps/`** | `bin/`·OS(launchd/systemd)·MCP 클라이언트가 | 자체 진입점을 가진 실행 단위 | Turborepo·Nx의 `apps/`, Go의 `cmd/`와 같은 축 |
+| **`packages/`** | 다른 코드가 `#core/*` 같은 별칭으로 import | 공유 라이브러리. 진입점이 없다 | Turborepo `packages/`, Nx `libs/`, Go `pkg/` |
+| **`plugins/`** | `dk` 레지스트리가 스캔해서 실행 | 툴 하나당 디렉터리 하나 (`manifest.json` + `index.ts`) | `kubectl-*`·Terraform provider와 같은 "레지스트리 + 플러그인" 패턴 |
+| **`scripts/`** | 개발자가 저장소를 관리할 때 | 유지보수·검증 스크립트 | `bin/`과 반대. **제품이 아닌 것** |
+
+`bin/`과 `scripts/`가 헷갈리기 쉬운데 기준은 명확하다. **사용자가 쓰면 `bin/`, 저장소를 돌보려고 쓰면 `scripts/`.**
+`bin/dk`는 제품이고 `scripts/selfcheck.sh`는 제품이 아니다.
+
+### 새 코드를 어디에 둘까
+
+```
+자체 실행 진입점이 있나?
+├─ 예 → 사람이 터미널에서 직접 치나?
+│        ├─ 예 → bin/ 에 셸 래퍼, 본체는 apps/<name>/
+│        └─ 아니오(OS·MCP 클라이언트가 띄움) → apps/<name>/
+└─ 아니오 → dk run 으로 실행되는 단위인가?
+           ├─ 예 → plugins/<name>/  (manifest.json + index.ts 계약을 지켜야 한다)
+           └─ 아니오 → packages/<name>/  (#alias 로만 소비되는 라이브러리)
+```
+
+### 전체 트리
+
 ```
 devkit/
-├─ bin/dk                     실행 진입점
-├─ packages/
-│  ├─ core/src/
-│  │  ├─ contract.ts          툴 계약 타입 — 여기부터 읽는다
-│  │  ├─ errors.ts            구조화 에러 (실패 위치 자동 추출)
-│  │  ├─ schema.ts            JSON Schema 서브셋 검증기
-│  │  ├─ config.ts            설정 5계층 병합
-│  │  ├─ secrets.ts           Keychain 참조 해석 + 마스킹
-│  │  ├─ db.ts                node:sqlite (WAL)
-│  │  ├─ ledger.ts            실행 기록 (JSONL 진실원천 + SQLite 인덱스)
-│  │  ├─ lease.ts             배타 자원 임대
-│  │  ├─ cache.ts             커밋 SHA 기반 결과 캐시
-│  │  ├─ policy.ts            정책 게이트
-│  │  ├─ time.ts              로컬 시간 기준 로그 로테이션
-│  │  └─ toml.ts              TOML 서브셋 파서
-│  ├─ registry/src/
-│  │  ├─ registry.ts          manifest 스캔·검증
-│  │  └─ execute.ts           실행 파이프라인 ★ 모든 surface가 여기로 모인다
-│  ├─ cli/src/                dk 명령
-│  ├─ mcp/src/stdio.ts        MCP 어댑터
-│  └─ config-provider/        개인용 설정 저장소 서비스 (dkc)
-│     ├─ src/resolve.ts       참조 치환 + 실효 visibility ★ 가장 위험한 코드
-│     ├─ src/api.ts           모든 surface가 통과하는 단일 지점
-│     ├─ src/daemon.ts        UDS 서버 + stale 소켓 판별
-│     ├─ src/mcp.ts           MCP stdio 어댑터
-│     ├─ src/ui.ts            로컬 UI (127.0.0.1 전용)
-│     ├─ examples/            public/secret/policy 예시
-│     ├─ hooks/pre-commit     평문 커밋 차단
-│     └─ service/             launchd / systemd 유닛
-├─ tools/<name>/              manifest.json + index.ts + fixtures/
-└─ scripts/selfcheck.sh       end-to-end 검증
+├─ bin/                          ← 사람이 치는 명령
+│  ├─ dk                         devkit 툴 실행기
+│  ├─ dkc                        config-provider CLI
+│  └─ dkc-mcp                    config-provider MCP 서버 (에이전트가 실행)
+│
+├─ apps/                         ← 진입점이 있는 실행 단위
+│  ├─ cli/src/                   dk 명령 구현 (bin/dk가 호출)
+│  ├─ mcp/src/stdio.ts           devkit MCP 서버 — plugins/를 에이전트에게 노출
+│  └─ config-provider/           개인 설정 저장소 서비스 (상주 데몬)
+│     ├─ src/resolve.ts          참조 치환 + 실효 visibility ★ 가장 위험한 코드
+│     ├─ src/api.ts              모든 surface가 통과하는 단일 지점
+│     ├─ src/daemon.ts           UDS 서버 + stale 소켓 판별
+│     ├─ src/mcp.ts              자체 MCP 어댑터 (devkit MCP와 별개)
+│     ├─ src/ui.ts + ui.html     로컬 UI (127.0.0.1 전용)
+│     ├─ examples/               public/secret/policy 예시
+│     ├─ hooks/pre-commit        평문 커밋 차단
+│     └─ service/                launchd plist · systemd 유닛
+│
+├─ packages/                     ← 라이브러리. #alias 로만 소비된다
+│  ├─ core/src/                  #core/*
+│  │  ├─ contract.ts             툴 계약 타입 — 여기부터 읽는다
+│  │  ├─ errors.ts               구조화 에러 (실패 위치 자동 추출)
+│  │  ├─ schema.ts               JSON Schema 서브셋 검증기
+│  │  ├─ config.ts               설정 5계층 병합
+│  │  ├─ secrets.ts              Keychain 참조 해석 + 마스킹
+│  │  ├─ db.ts                   node:sqlite (WAL)
+│  │  ├─ ledger.ts               실행 기록 (JSONL 진실원천 + SQLite 인덱스)
+│  │  ├─ lease.ts                배타 자원 임대
+│  │  ├─ cache.ts                커밋 SHA 기반 결과 캐시
+│  │  ├─ policy.ts               정책 게이트
+│  │  ├─ paths.ts                모든 경로의 단일 출처
+│  │  ├─ time.ts                 로컬 시간 기준 로그 로테이션
+│  │  └─ toml.ts                 TOML 서브셋 파서
+│  ├─ registry/src/              #registry/*
+│  │  ├─ registry.ts             plugins/ 스캔 · manifest 계약 검증
+│  │  └─ execute.ts              실행 파이프라인 ★ 모든 surface가 여기로 모인다
+│  └─ lang/src/                  #lang/* — 언어별 코드 스캐너
+│
+├─ plugins/                      ← dk run 이 실행하는 툴
+│  ├─ repo-map/                  디렉터리를 만들면 그게 곧 등록이다.
+│  ├─ trace-flow/                별도의 등록 절차가 없다
+│  ├─ context-pack/
+│  ├─ devkit-observe/
+│  └─ echo/                      ← 툴 하나의 속은 이렇게 생겼다:
+│     ├─ manifest.json           계약 — 입출력 스키마·부수효과·동시성·캐시 정책
+│     ├─ index.ts                구현 — run() 함수 하나
+│     ├─ fixtures/*.json         골든 테스트 (입력 → 기대 결과)
+│     └─ README.md
+│
+└─ scripts/selfcheck.sh          ← end-to-end 검증 (제품 아님)
 ```
+
+### 여기 없는 것
+
+- **`node_modules/`가 없다.** 의존성이 0이라 `npm install`을 하지 않는다
+- **빌드 산출물이 없다.** Node 24가 `.ts`를 직접 실행한다. 파일을 고치면 즉시 반영된다
+- **패키지별 `package.json`이 없다.** 최상위 하나뿐이다 (§ 아래)
+
+### 왜 패키지를 쪼개지 않았나
+
+npm workspaces를 쓰지 않는다. Node는 `#core/*` 같은 별칭을 **가장 가까운 `package.json`**에서만
+찾기 때문에, 패키지마다 `package.json`을 두는 순간 별칭이 전부 끊기고 (`ERR_PACKAGE_IMPORT_NOT_DEFINED`)
+복구하려면 `npm install`이 필요해진다. 그러면 "빌드 단계가 없어서 에이전트가 툴을 바로 고칠 수 있다"는
+이 저장소의 전제가 무너진다. 그래서 **최상위 `package.json` 하나 + subpath imports**로 간다
+(`plan.md` §15.1의 기각 기록).
+
+디렉터리는 나뉘어 있지만 패키지 경계는 하나다. 무설치 모노레포다.
+
+### 이름 하나 주의 — `plugins/` 와 "툴"
+
+`plugins/` 안의 각 디렉터리를 부르는 이름은 **"툴(tool)"**이다. `dk run <tool>`, `dk list`,
+MCP의 `tools/call`이 모두 그 말을 쓴다.
+
+디렉터리 이름만 `plugins/`인 이유는, 저장소 최상위의 `tools/`가 관행상 "개발 보조 스크립트 모음"으로
+읽히기 때문이다(Chromium·LLVM의 `tools/`가 그렇다). 여기 있는 건 그런 잡동사니가 아니라
+**레지스트리가 스캔하는 계약 기반 확장 단위**라서, 그 성격을 정확히 말하는 이름을 골랐다.
 
 ---
 
@@ -397,8 +471,8 @@ devkit/
 | [`plan.md`](plan.md) | 전략, 문제 분석, 아키텍처, ADR, 마일스톤 |
 | [`AGENTS.md`](AGENTS.md) | **AI 에이전트용** — 툴 추가·수정 절차, 금지 사항, 에러 대응 |
 | [`TRYOUT.md`](TRYOUT.md) | 직접 써보는 순서 |
-| [`packages/config-provider/README.md`](packages/config-provider/README.md) | config-provider 설치·운영 (age 키 백업, 키 분실 대응 포함) |
-| [`packages/config-provider/AGENTS.md`](packages/config-provider/AGENTS.md) | **AI 에이전트용** — 설정값 조회 규칙과 이 서비스를 고치는 절차 |
+| [`apps/config-provider/README.md`](apps/config-provider/README.md) | config-provider 설치·운영 (age 키 백업, 키 분실 대응 포함) |
+| [`apps/config-provider/AGENTS.md`](apps/config-provider/AGENTS.md) | **AI 에이전트용** — 설정값 조회 규칙과 이 서비스를 고치는 절차 |
 
 ---
 

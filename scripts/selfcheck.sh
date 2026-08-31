@@ -142,7 +142,7 @@ MCPOUT=$(printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
   '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"echo","arguments":{"message":"mcp"},"_meta":{"agentId":"selfcheck"}}}' \
-  | node --disable-warning=ExperimentalWarning "$ROOT/packages/mcp/src/stdio.ts" 2>/dev/null)
+  | node --disable-warning=ExperimentalWarning "$ROOT/apps/mcp/src/stdio.ts" 2>/dev/null)
 
 RESULT=$(printf '%s' "$MCPOUT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   const out={};

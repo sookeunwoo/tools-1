@@ -72,5 +72,5 @@ dk run repo-map --input '{"repo":"my-service"}' --refresh              # 강제 
 ```bash
 dk test repo-map
 node --test packages/lang/test/scan.test.ts        # 스캐너 회귀 테스트
-node --test tools/trace-flow/test/pipeline.test.ts # repo-map → trace-flow 통합
+node --test plugins/trace-flow/test/pipeline.test.ts # repo-map → trace-flow 통합
 ```

@@ -218,7 +218,7 @@ export async function execute(
         message: `'${manifest.name}'의 출력이 outputSchema와 맞지 않습니다 — ${formatIssues(outputResult.issues)}`,
         hint: 'index.ts의 반환값 또는 manifest.json의 outputSchema 중 하나가 틀렸습니다.',
         retryable: false,
-        source: { file: `tools/${manifest.name}/index.ts`, line: 1 },
+        source: { file: `plugins/${manifest.name}/index.ts`, line: 1 },
       });
     }
 
@@ -230,7 +230,7 @@ export async function execute(
         message: `'${manifest.name}'이 evidence 없이 결과를 반환했습니다`,
         hint: '모든 툴은 근거(파일:라인, 쿼리, 명령)를 반환해야 합니다. 메타 툴이면 manifest에 evidenceOptional: true 를 넣으세요.',
         retryable: false,
-        source: { file: `tools/${manifest.name}/index.ts`, line: 1 },
+        source: { file: `plugins/${manifest.name}/index.ts`, line: 1 },
       });
     }
 

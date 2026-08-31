@@ -23,7 +23,7 @@
 - 따라서 파일을 고치면 바로 반영된다. 재빌드·재설치를 시도하지 마라.
 
 > 설정값(서버 주소·비밀번호·API 키·카프카 토픽명)을 찾고 있다면 `dk`가 아니라 `dkc`다.
-> 조회 규칙과 고치는 절차는 [`packages/config-provider/AGENTS.md`](packages/config-provider/AGENTS.md)에 있다.
+> 조회 규칙과 고치는 절차는 [`apps/config-provider/AGENTS.md`](apps/config-provider/AGENTS.md)에 있다.
 > 요약: `dkc resolve <자연어>` → key 확인 → `dkc get <KEY>` 또는 (선호) `dkc exec --with N=KEY -- <명령>`.
 
 ---
@@ -43,7 +43,7 @@ devkit의 모든 에러는 구조화되어 있고 **고칠 위치를 스스로 �
     "hint": "index.ts의 반환값 또는 manifest.json의 outputSchema 중 하나가 틀렸습니다.",
     "retryable": false,
     "fixCommand": "dk run repo-map --repo my-service --refresh",
-    "source": { "file": "tools/trace-flow/index.ts", "line": 118 }
+    "source": { "file": "plugins/trace-flow/index.ts", "line": 118 }
   }
 }
 ```
@@ -79,7 +79,7 @@ echo '{"repo":"my-service","entry":"POST /v1/payments"}' > /tmp/repro.json
 
 ### 4단계. 고친다
 
-- 툴 구현은 `tools/<name>/index.ts` **한 파일**이다.
+- 툴 구현은 `plugins/<name>/index.ts` **한 파일**이다.
 - **300줄을 넘기지 마라.** 넘을 것 같으면 툴을 둘로 쪼개는 게 맞다.
 - `packages/core/`를 고치는 건 최후의 수단이다. 그건 모든 툴에 영향을 준다.
 
@@ -87,7 +87,7 @@ echo '{"repo":"my-service","entry":"POST /v1/payments"}' > /tmp/repro.json
 
 **이 단계를 건너뛰지 마라.** 같은 버그가 다시 나는 걸 막는 유일한 장치다.
 
-`tools/<name>/fixtures/<설명>.json`:
+`plugins/<name>/fixtures/<설명>.json`:
 
 ```json
 {
@@ -167,9 +167,25 @@ export async function run(input: Input, ctx: ToolContext): Promise<ToolResult> {
 
 ## 3. 구조
 
+최상위 디렉터리 다섯 개가 각각 성격 하나를 맡는다. **새 파일을 어디 둘지는 "누가 이걸
+실행하거나 import하는가"로 정해진다.** 헷갈리면 아래 표에서 고르고, 그래도 애매하면
+새 디렉터리를 만들지 말고 물어봐라.
+
+| 디렉터리 | 무엇이 들어가나 | 판별법 |
+|---|---|---|
+| `bin/` | 사람이 치는 명령 (`dk`, `dkc`, `dkc-mcp`) | 사용자가 터미널에서 직접 실행하나 |
+| `apps/` | 자체 진입점이 있는 실행 단위 | `bin/`·OS·MCP 클라이언트가 프로세스로 띄우나 |
+| `packages/` | 라이브러리 | `#core/*` 같은 별칭으로 import만 되나 |
+| `plugins/` | `dk run` 툴 | `manifest.json` 계약을 지키나 |
+| `scripts/` | 저장소 유지보수 | 제품이 아니라 개발자용인가 |
+
 ```
 devkit/
-├─ bin/dk                     실행 진입점 (경고 억제 후 main.ts 호출)
+├─ bin/                       dk · dkc · dkc-mcp (셸 래퍼)
+├─ apps/
+│  ├─ cli/src/                dk 명령
+│  ├─ mcp/src/stdio.ts        devkit MCP 어댑터 (얇게 유지할 것)
+│  └─ config-provider/        개인 설정 저장소 서비스 — 별도 AGENTS.md 있음
 ├─ packages/
 │  ├─ core/src/
 │  │  ├─ contract.ts          툴 계약 타입 — 여기부터 읽어라
@@ -182,18 +198,27 @@ devkit/
 │  │  ├─ lease.ts             배타 자원 임대 (동시성의 핵심)
 │  │  ├─ cache.ts             commitSha 기반 결과 캐시
 │  │  ├─ policy.ts            정책 게이트 5단계
+│  │  ├─ paths.ts             모든 경로의 단일 출처
 │  │  └─ toml.ts              TOML 서브셋 파서
 │  ├─ registry/src/
-│  │  ├─ registry.ts          manifest 스캔·검증
+│  │  ├─ registry.ts          plugins/ 스캔 · manifest 검증
 │  │  └─ execute.ts           실행 파이프라인 ★ 모든 surface가 여기로 모인다
-│  ├─ cli/src/                dk 명령
-│  ├─ mcp/src/stdio.ts        MCP 어댑터 (얇게 유지할 것)
-│  └─ config-provider/        개인 설정 저장소 서비스 — 별도 AGENTS.md 있음
-└─ tools/<name>/              manifest.json + index.ts + fixtures/
+│  └─ lang/src/               언어별 코드 스캐너
+├─ plugins/<name>/            manifest.json + index.ts + fixtures/
+└─ scripts/selfcheck.sh       end-to-end 검증
 ```
 
 **`packages/registry/src/execute.ts`가 중심이다.** CLI든 MCP든 전부 여기로 들어온다.
 동작을 바꾸고 싶으면 surface가 아니라 여기를 봐라.
+
+**주의 — 디렉터리는 `plugins/`, 부르는 이름은 "툴"이다.** `dk run <tool>`, `dk list`,
+MCP `tools/call`이 전부 "툴"이라는 말을 쓴다. 최상위 `tools/`가 관행상 "개발 보조 스크립트
+모음"으로 읽혀서 디렉터리 이름만 바꾼 것이니, 문서나 에러 메시지에서 용어를 바꾸지 마라.
+
+**패키지별 `package.json`을 만들지 마라.** Node는 `#core/*` 별칭을 가장 가까운
+`package.json`에서만 찾는다. 하나라도 중첩하는 순간 그 아래 전부가
+`ERR_PACKAGE_IMPORT_NOT_DEFINED`로 깨지고, 고치려면 `npm install`이 필요해진다.
+최상위 `package.json` 하나가 이 저장소의 유일한 패키지 경계다.
 
 ---
 
@@ -221,6 +246,7 @@ devkit/
 | 금지 | 이유 |
 |---|---|
 | npm 패키지 추가 | 의존성 0이 설계 제약이다. 네이티브 빌드가 끼면 툴을 고칠 수 없게 된다 |
+| 하위 디렉터리에 `package.json` 생성 | `#core/*` 별칭이 전부 끊긴다 (§3) |
 | 툴 안에서 LLM 호출 | 비결정적 출력 → 캐시·테스트·디버깅 불가 |
 | `evidence` 비우고 반환 | devkit의 존재 이유를 없애는 일이다 |
 | 낮은 `confidence`를 1.0으로 올려서 통과시키기 | 조용히 틀린 답을 만든다. 차라리 실패해라 |
@@ -237,7 +263,7 @@ devkit/
 |---|---|---|
 | `INPUT_INVALID` | 입력이 계약과 다름 | `dk describe <tool>`로 스키마 확인 |
 | `TOOL_NOT_FOUND` | 툴 이름 오타 또는 미등록 | `dk list` |
-| `EVIDENCE_REQUIRED` | 툴이 근거 없이 반환 | `tools/<name>/index.ts`에 evidence 추가 |
+| `EVIDENCE_REQUIRED` | 툴이 근거 없이 반환 | `plugins/<name>/index.ts`에 evidence 추가 |
 | `OUTPUT_CONTRACT_VIOLATION` | 반환값이 outputSchema와 불일치 | 둘 중 하나를 맞춰라 |
 | `LEASE_BUSY` | 다른 에이전트가 자원 점유 | `--wait 30000` 또는 순서 변경 |
 | `TOOL_TIMEOUT` | 시간 초과 | 입력 범위를 좁히거나 `timeoutSec` 상향 |

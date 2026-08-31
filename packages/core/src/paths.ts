@@ -39,6 +39,14 @@ export function repoRoot(): string {
   return resolve(fileURLToPath(import.meta.url), '../../../..');
 }
 
-export function toolsDir(): string {
-  return process.env.DEVKIT_TOOLS_DIR ?? join(repoRoot(), 'tools');
+/**
+ * 툴 플러그인이 사는 곳.
+ *
+ * 디렉터리 이름이 `plugins`인 이유: 저장소 최상위의 `tools/`는 관행상 "개발 보조
+ * 스크립트 모음"으로 읽히는데, 여기 있는 건 레지스트리가 스캔하는 계약 기반 확장
+ * 단위다(kubectl-*, terraform provider와 같은 패턴). 단위를 부르는 이름은 그대로
+ * "툴"이다 — `dk run <tool>`, MCP `tools/call`이 모두 그 말을 쓴다.
+ */
+export function pluginsDir(): string {
+  return process.env.DEVKIT_PLUGINS_DIR ?? join(repoRoot(), 'plugins');
 }

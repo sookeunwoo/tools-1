@@ -195,7 +195,7 @@ dkc ui          # http://127.0.0.1:7777
 
 ```bash
 sed -e "s#__DEVKIT__#$PWD#g" -e "s#__HOME__#$HOME#g" \
-  packages/config-provider/service/dev.devkit.config-provider.plist \
+  apps/config-provider/service/dev.devkit.config-provider.plist \
   > ~/Library/LaunchAgents/dev.devkit.config-provider.plist
 
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.devkit.config-provider.plist
@@ -206,7 +206,7 @@ launchctl print gui/$(id -u)/dev.devkit.config-provider | head -20
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp packages/config-provider/service/config-provider.{socket,service} ~/.config/systemd/user/
+cp apps/config-provider/service/config-provider.{socket,service} ~/.config/systemd/user/
 # .service의 ExecStart 경로를 체크아웃 위치에 맞게 고칠 것
 systemctl --user daemon-reload
 systemctl --user enable --now config-provider.socket
@@ -366,7 +366,7 @@ secret은 나가지 않는다. 참조를 통해 secret이 섞인 항목(`ORDER_D
 ## 10. 개발
 
 ```bash
-node --disable-warning=ExperimentalWarning --test 'packages/config-provider/test/*.test.ts'
+node --disable-warning=ExperimentalWarning --test 'apps/config-provider/test/*.test.ts'
 ```
 
 의존성이 없고 빌드 단계도 없다. `.ts`를 Node 24가 직접 실행한다.

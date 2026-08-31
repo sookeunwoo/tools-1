@@ -203,7 +203,7 @@ printf '%s\n' \
  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"echo","arguments":{"message":"mcp"}}}' \
-| node --disable-warning=ExperimentalWarning packages/mcp/src/stdio.ts
+| node --disable-warning=ExperimentalWarning apps/mcp/src/stdio.ts
 ```
 
 제거는 `claude mcp remove devkit`.
@@ -213,8 +213,8 @@ printf '%s\n' \
 일부러 계약 위반 버그를 심어본다:
 
 ```bash
-cp tools/echo/index.ts /tmp/echo.bak
-perl -pi -e 's/count: echoed\.length/count: String(echoed.length)/' tools/echo/index.ts
+cp plugins/echo/index.ts /tmp/echo.bak
+perl -pi -e 's/count: echoed\.length/count: String(echoed.length)/' plugins/echo/index.ts
 
 dk run echo --input '{"message":"x"}'
 ```
@@ -224,12 +224,12 @@ dk run echo --input '{"message":"x"}'
   "code": "OUTPUT_CONTRACT_VIOLATION",
   "message": "출력이 outputSchema와 맞지 않습니다 — $.count: 타입이 integer 이어야 합니다 (받은 값: string)",
   "hint": "index.ts의 반환값 또는 manifest.json의 outputSchema 중 하나가 틀렸습니다.",
-  "source": { "file": "tools/echo/index.ts", "line": 1 } }}
+  "source": { "file": "plugins/echo/index.ts", "line": 1 } }}
 ```
 
 ```bash
 dk test echo        # 골든 픽스처 2건이 같은 이유로 실패
-cp /tmp/echo.bak tools/echo/index.ts
+cp /tmp/echo.bak plugins/echo/index.ts
 dk test echo        # 7/7 통과
 ```
 
@@ -246,7 +246,7 @@ dk test my-analyzer
 그게 뭘 채워야 하는지 알려준다. 계약을 지킨 상태로 시작하게 하려는 의도다.
 
 ```bash
-rm -rf tools/my-analyzer     # 정리
+rm -rf plugins/my-analyzer     # 정리
 ```
 
 수정 절차 전체는 `AGENTS.md`에 6단계로 정리되어 있다.

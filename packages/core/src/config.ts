@@ -99,7 +99,7 @@ function envLayer(): Config {
   const out: Config = {};
   for (const [key, raw] of Object.entries(process.env)) {
     if (!key.startsWith('DEVKIT_') || raw === undefined) continue;
-    if (key === 'DEVKIT_HOME' || key === 'DEVKIT_PROFILE' || key === 'DEVKIT_TOOLS_DIR') continue;
+    if (key === 'DEVKIT_HOME' || key === 'DEVKIT_PROFILE' || key === 'DEVKIT_PLUGINS_DIR') continue;
     const parts = key.slice('DEVKIT_'.length).toLowerCase().split('__');
     let cur = out;
     for (const part of parts.slice(0, -1)) {

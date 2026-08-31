@@ -88,5 +88,5 @@ dk run context-pack --input '{
 
 ```bash
 dk test context-pack                                   # 계약 + 픽스처
-node --test tools/context-pack/test/*.test.ts          # 임시 git 저장소 통합 테스트
+node --test plugins/context-pack/test/*.test.ts          # 임시 git 저장소 통합 테스트
 ```

@@ -1,13 +1,13 @@
 /**
  * 툴 레지스트리 — manifest 로딩과 계약 검증.
  *
- * tools/<name>/manifest.json 을 스캔한다. 등록 절차가 따로 없다:
+ * plugins/<name>/manifest.json 을 스캔한다. 등록 절차가 따로 없다:
  * 디렉토리를 만들면 그게 곧 등록이다 (에이전트가 툴을 추가하기 쉽게).
  */
 
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { toolsDir } from '#core/paths.ts';
+import { pluginsDir } from '#core/paths.ts';
 import { DevkitError } from '#core/errors.ts';
 import { validate, formatIssues } from '#core/schema.ts';
 import type { Manifest, ToolModule } from '#core/contract.ts';
@@ -54,7 +54,7 @@ export function getTool(name: string): ToolEntry {
     throw new DevkitError({
       code: 'TOOL_NOT_FOUND',
       message: `툴 '${name}'을 찾을 수 없습니다`,
-      hint: known.length ? `사용 가능한 툴: ${known.join(', ')}` : `${toolsDir()} 에 툴이 없습니다.`,
+      hint: known.length ? `사용 가능한 툴: ${known.join(', ')}` : `${pluginsDir()} 에 툴이 없습니다.`,
       retryable: false,
       fixCommand: `dk scaffold tool ${name}`,
     });
@@ -82,7 +82,7 @@ export function invalidateRegistry(): void {
 
 function loadAll(): Map<string, ToolEntry> {
   if (cache) return cache;
-  const dir = toolsDir();
+  const dir = pluginsDir();
   const found = new Map<string, ToolEntry>();
 
   if (!existsSync(dir)) {

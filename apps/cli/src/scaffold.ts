@@ -7,7 +7,7 @@
 
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { toolsDir } from '#core/paths.ts';
+import { pluginsDir } from '#core/paths.ts';
 import { DevkitError } from '#core/errors.ts';
 
 export function scaffoldTool(name: string, summary?: string): string {
@@ -18,7 +18,7 @@ export function scaffoldTool(name: string, summary?: string): string {
       retryable: false,
     });
   }
-  const dir = join(toolsDir(), name);
+  const dir = join(pluginsDir(), name);
   if (existsSync(dir)) {
     throw new DevkitError({
       code: 'SCAFFOLD_EXISTS',
@@ -63,7 +63,7 @@ export function scaffoldTool(name: string, summary?: string): string {
     `/**
  * ${name} — TODO: 무엇을 하는 툴인지.
  *
- * 계약: manifest.json 참조. 지켜야 할 것은 tools/echo/index.ts 주석에 정리되어 있다.
+ * 계약: manifest.json 참조. 지켜야 할 것은 plugins/echo/index.ts 주석에 정리되어 있다.
  */
 
 import type { ToolContext, ToolResult } from '#core/contract.ts';

@@ -53,7 +53,7 @@ before(() => {
   tools = join(home, 'tools');
   mkdirSync(tools, { recursive: true });
   process.env.DEVKIT_HOME = home;
-  process.env.DEVKIT_TOOLS_DIR = tools;
+  process.env.DEVKIT_PLUGINS_DIR = tools;
 
   makeTool('good', {}, `
     export async function run(input: any): Promise<ToolResult> {
@@ -109,7 +109,7 @@ test('evidence가 없으면 결과를 반환하지 않는다 (P3)', async () => 
     (e: { code?: string; source?: { file: string } }) => {
       assert.equal(e.code, 'EVIDENCE_REQUIRED');
       // 에이전트가 바로 찾아갈 수 있게 위치가 붙어야 한다 (제약 2)
-      assert.match(e.source!.file, /tools\/no-evidence\/index\.ts/);
+      assert.match(e.source!.file, /plugins\/no-evidence\/index\.ts/);
       return true;
     },
   );

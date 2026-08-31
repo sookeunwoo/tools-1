@@ -79,5 +79,5 @@ dk run trace-flow --input '{"repo":"my-service","entry":"OrderService.confirm","
 
 ```bash
 dk test trace-flow
-node --test tools/trace-flow/test/pipeline.test.ts   # 임시 Kotlin 저장소로 end-to-end
+node --test plugins/trace-flow/test/pipeline.test.ts   # 임시 Kotlin 저장소로 end-to-end
 ```

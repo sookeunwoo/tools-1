@@ -103,7 +103,7 @@ add_alias("INBOUND_INSTRUCTION_TOPIC", "입고 이벤트")
     "hint": "같은 자연어가 두 리소스를 가리키면 에이전트가 틀린 값을 조회합니다. 한쪽을 바꾸세요.",
     "retryable": false,
     "fixCommand": "dkc doctor",
-    "source": { "file": "packages/config-provider/src/alias.ts", "line": 71 }
+    "source": { "file": "apps/config-provider/src/alias.ts", "line": 71 }
   }
 }
 ```
@@ -177,7 +177,7 @@ const res = await handle({
 #   reduced.test.ts  개인키 없는 축소 모드
 #   yaml.test.ts     파서/에미터
 
-node --disable-warning=ExperimentalWarning --test 'packages/config-provider/test/*.test.ts'
+node --disable-warning=ExperimentalWarning --test 'apps/config-provider/test/*.test.ts'
 ```
 
 빌드 단계가 없다. 파일을 고치면 바로 반영된다. 재빌드·재설치를 시도하지 마라.

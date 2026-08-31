@@ -7,7 +7,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, accessSync, constants } from 'node:fs';
-import { devkitHome, ensureHome, globalConfigPath, toolsDir, dbPath } from '#core/paths.ts';
+import { devkitHome, ensureHome, globalConfigPath, pluginsDir, dbPath } from '#core/paths.ts';
 import { loadConfig, listRepos, resolveRepo } from '#core/config.ts';
 import { db } from '#core/db.ts';
 import { sweep, activeLeases } from '#core/lease.ts';
@@ -47,7 +47,7 @@ export function diagnose(): Check[] {
 
   checks.push(check('툴 레지스트리', () => {
     const tools = listTools();
-    if (tools.length === 0) throw new Error(`${toolsDir()} 에 툴이 없습니다`);
+    if (tools.length === 0) throw new Error(`${pluginsDir()} 에 툴이 없습니다`);
     return `${tools.length}개 — ${tools.map((t) => t.manifest.name).join(', ')}`;
   }, 'dk scaffold tool <name>'));
 
