@@ -12,7 +12,7 @@
 import { createInterface } from 'node:readline';
 import { toDevkitError } from '#core/errors.ts';
 import { call, callOrThrow } from './client.ts';
-import { DEFAULT_ENV } from './api.ts';
+import { DEFAULT_ENV } from './defaults.ts';
 
 const PROTOCOL_VERSION = '2025-06-18';
 const SERVER_INFO = { name: 'config-provider', version: '0.1.0' };

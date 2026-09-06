@@ -1,0 +1,72 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "config-provider",
+  "title": "Config Provider",
+  "description": "로컬 config-provider 데몬에서 설정·비밀값을 찾아 클립보드로 꺼낸다",
+  "icon": "icon.png",
+  "author": "woo972",
+  "categories": ["Developer Tools"],
+  "license": "MIT",
+  "private": true,
+  "commands": [
+    {
+      "name": "search-config",
+      "title": "Config",
+      "subtitle": "Config Provider",
+      "description": "key · 별칭 · 설명으로 찾아 값을 복사한다",
+      "mode": "view",
+      "keywords": ["config", "설정", "비밀값", "secret", "env", "키"],
+      "arguments": [
+        { "name": "query", "placeholder": "검색어", "type": "text", "required": false }
+      ]
+    }
+  ],
+  "preferences": [
+    {
+      "name": "defaultEnv",
+      "title": "기본 env",
+      "description": "값을 복사할 때 기본으로 쓰는 환경. 비우면 데몬의 기본값(dev)을 따른다",
+      "type": "textfield",
+      "default": "dev",
+      "required": false
+    },
+    {
+      "name": "socketPath",
+      "title": "데몬 소켓 경로",
+      "description": "비우면 자동으로 찾는다. DKC_SOCKET을 따로 지정했다면 그 경로를 넣는다",
+      "type": "textfield",
+      "default": "",
+      "required": false
+    },
+    {
+      "name": "dkcPath",
+      "title": "dkc 실행 파일",
+      "description": "'데몬 시작' 동작에 쓴다. PATH에 없으면 전체 경로를 넣는다",
+      "type": "textfield",
+      "default": "dkc",
+      "required": false
+    },
+    {
+      "name": "uiUrl",
+      "title": "UI 주소",
+      "description": "'UI에서 열기'가 여는 주소",
+      "type": "textfield",
+      "default": "http://127.0.0.1:7777",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.83.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "typescript": "^5.6.3"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix"
+  }
+}

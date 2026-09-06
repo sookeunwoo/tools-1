@@ -112,6 +112,25 @@ function req(method: string, path: string, opts: { query?: string; body?: unknow
   });
 }
 
+test('종류는 등록된 목록 안에서만 고를 수 있다', { skip: SKIP }, async () => {
+  const before = await req('GET', '/alias/ORDER_SERVICE_HOST');
+  const version = (before.body as any).data.version;
+
+  const bad = await req('PUT', '/alias/ORDER_SERVICE_HOST', { body: { version, resource_type: 'api-key' } });
+  assert.equal(bad.status, 400);
+  assert.equal((bad.body as any).error.code, 'INPUT_INVALID');
+
+  const good = await req('PUT', '/alias/ORDER_SERVICE_HOST', { body: { version, resource_type: 'api_key' } });
+  assert.equal(good.status, 200);
+  assert.equal((good.body as any).data.resourceType, 'api_key');
+});
+
+test('등록되지 않은 종류가 파일에 있어도 기동은 막지 않는다 — 저장소의 진실은 파일이다', { skip: SKIP }, () => {
+  // kafka_topic은 목록에 없지만 픽스처에 그대로 있고, 여기까지 온 것 자체가 기동 성공의 증거다.
+  const it = current().index.get('INBOUND_INSTRUCTION_TOPIC')!;
+  assert.equal(it.resourceType, 'kafka_topic');
+});
+
 test('sops 왕복 후에도 평문 메타데이터는 그대로고 값만 암호화된다', { skip: SKIP }, () => {
   const raw = readFileSync(join(store, 'config', 'secret.yaml'), 'utf8');
   assert.match(raw, /DB_PASSWORD/);          // key는 평문

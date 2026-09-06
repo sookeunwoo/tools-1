@@ -119,15 +119,16 @@ export async function writeItems(visibility: Visibility, items: Item[]): Promise
 }
 
 /**
- * 파일 단위 락. O_EXCL 락 파일로 구현한다.
+ * 파일 단위 락. O_EXCL 락 파일로 구현한다. name은 잠그려는 파일 이름이다
+ * (`public`·`secret`·`collections`).
  *
  * 단일 머신·단일 데몬 전제이므로 이 이상은 필요 없다. 다만 데몬이 SIGKILL로 죽으면
  * 락 파일이 남으므로, 오래된 락(2분)은 stale로 보고 회수한다 — 소켓 파일과 같은 문제다.
  */
 const LOCK_TTL_MS = 120_000;
 
-export async function withFileLock<T>(visibility: Visibility, fn: () => Promise<T>): Promise<T> {
-  const lock = join(storeRoot(), `.${visibility}.lock`);
+export async function withFileLock<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  const lock = join(storeRoot(), `.${name}.lock`);
   mkdirSync(storeRoot(), { recursive: true });
 
   const deadline = Date.now() + 5_000;
@@ -145,7 +146,7 @@ export async function withFileLock<T>(visibility: Visibility, fn: () => Promise<
       if (Date.now() > deadline) {
         throw new DevkitError({
           code: 'STORE_LOCK_BUSY',
-          message: `${visibility}.yaml이 다른 쓰기 작업에 잡혀 있습니다`,
+          message: `${name}.yaml이 다른 쓰기 작업에 잡혀 있습니다`,
           hint: '잠시 후 다시 시도하세요. 계속 걸리면 저장소의 .lock 파일을 확인하세요.',
           retryable: true,
         });

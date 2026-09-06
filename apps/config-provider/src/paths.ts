@@ -27,6 +27,11 @@ export function secretPath(): string {
   return join(storeRoot(), 'config', 'secret.yaml');
 }
 
+/** 컬렉션(키를 묶는 사용자 정리 단위) 파일. 값이 없으므로 평문이고 git으로 관리된다. */
+export function collectionsPath(): string {
+  return join(storeRoot(), 'collections.yaml');
+}
+
 export function sopsRulesPath(): string {
   return join(storeRoot(), '.sops.yaml');
 }

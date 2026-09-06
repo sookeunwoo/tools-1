@@ -12,4 +12,6 @@ node_modules/
 # 다이어그램 렌더 산출물
 *.svg
 *.png
+# Raycast 확장 아이콘은 렌더 산출물이 아니라 소스 자산이다
+!apps/config-provider/raycast/assets/icon.png
 .gstack/

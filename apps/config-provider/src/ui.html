@@ -8,17 +8,15 @@
 <!--
   이 UI는 본인이 복호화된 원본 평문을 직접 눈으로 확인하는 유일한 창구다 (스펙 §4.4).
 
-  배치는 Postman 워크스페이스를 따른다: 상단 툴바 · 좌측 탐색기 · 가운데 고밀도 표 ·
-  우측 인스펙터. 값은 예외 없이 표로 그린다 — 항목 × env 매트릭스가 기본 화면이고,
-  인스펙터의 값·참조·메타·별칭·CLI도 전부 표다. 카드보다 표가 같은 높이에서 더 많은
-  값을 같은 자리에 정렬해 보여주기 때문이다.
+  화면은 세 덩어리다: 얇은 상단 바 · 좌측 컬렉션 탐색기 · 우측 상세.
+  가운데 표를 없앤 이유는 같은 정보를 두 번 그리기 때문이다 — 목록은 왼쪽이 맡고,
+  값은 오른쪽 상세가 표로 보여준다. 값 표현은 여전히 전부 표다.
 
   외부 리소스를 하나도 쓰지 않는다(폰트·아이콘 CDN 포함). 이 페이지는 평문을 그리므로
   나가는 요청 경로를 만들지 않는다 — ui.ts의 CSP도 같은 기준으로 잠겨 있다.
 -->
 <style>
   :root {
-    /* Postman 라이트 팔레트 */
     --bg: #f8f9fa; --panel: #ffffff; --panel-2: #fafbfc; --head: #f4f5f7;
     --line: #e4e5e7; --line-2: #d0d2d6; --text: #1e2022; --muted: #5a6068; --faint: #8b919a;
     --accent: #ff6c37; --accent-hover: #f05a24; --accent-soft: #fff2ec; --accent-line: #ffc9b3;
@@ -27,7 +25,7 @@
     --info: #1d4ed8; --info-bg: #eff6ff; --info-line: #bfdbfe;
     --danger: #dc2626; --danger-bg: #fef2f2; --danger-line: #fecaca;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-    --sidebar: 232px; --toolbar: 46px; --inspector: 384px;
+    --topbar: 92px; --left: 464px;
     --shadow: 0 1px 2px rgba(16, 18, 22, .06);
   }
   @media (prefers-color-scheme: dark) {
@@ -43,62 +41,67 @@
     }
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; height: 100%; }
   body {
-    background: var(--bg); color: var(--text); overflow-x: hidden;
+    background: var(--bg); color: var(--text); overflow: hidden;
     font: 13px/1.5 -apple-system, "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
   }
-  button, input, select { font: inherit; color: inherit; }
+  button, input, select, textarea { font: inherit; color: inherit; }
   code, .mono { font-family: var(--mono); }
 
-  /* ── 상단 툴바 ─────────────────────────────────────────────── */
+  /* ── 상단 바 ───────────────────────────────────────────────── */
   .topbar {
-    position: fixed; inset: 0 0 auto 0; height: var(--toolbar); z-index: 40;
+    position: fixed; inset: 0 0 auto 0; height: var(--topbar); z-index: 40;
     display: flex; align-items: center; gap: 12px; padding: 0 12px;
     background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
   }
-  .brand { display: flex; align-items: center; gap: 8px; width: calc(var(--sidebar) - 12px); flex: none; min-width: 0; }
-  .logo {
-    width: 26px; height: 26px; border-radius: 5px; flex: none; color: #fff;
-    background: var(--accent); display: grid; place-items: center;
+  .brand { display: flex; align-items: center; gap: 8px; flex: none; width: 172px; white-space: nowrap; }
+  .logo { width: 30px; height: 30px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+  .brand b { font-size: 14px; letter-spacing: -.01em; display: block; }
+  .brand small { font: 400 10.5px/1.4 var(--mono); color: var(--faint); }
+  /* 상단은 한 줄 요약 대신 "무엇을 뜻하는 숫자인가"를 라벨로 붙인 카드로 보여준다. */
+  .cards { display: flex; gap: 8px; flex: 1; min-width: 0; overflow: hidden; }
+  .card {
+    display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; flex: 1; max-width: 230px;
   }
-  .brand b { font-size: 13.5px; letter-spacing: -.01em; }
-  .tag {
-    font: 600 9.5px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase;
-    padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent);
-    border: 1px solid var(--accent-line);
+  .card .label { font: 700 9.5px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+  .card .main { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+  .card .num { font: 700 17px/1.15 var(--mono); letter-spacing: -.02em; }
+  .card .unit { font: 400 11px/1.2 var(--mono); color: var(--muted); white-space: nowrap; }
+  .card .sub { font: 400 10.5px/1.3 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.tone-ok { border-color: var(--ok-line); background: var(--ok-bg); }
+  .card.tone-err { border-color: var(--danger-line); background: var(--danger-bg); }
+  .envchips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .envchip {
+    font: 600 10.5px/1.6 var(--mono); padding: 0 6px; border-radius: 4px;
+    border: 1px solid var(--line-2); color: var(--muted); background: var(--panel);
   }
-  .omni { position: relative; flex: 1; max-width: 560px; }
-  .omni .ico { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--faint); }
-  #q {
-    width: 100%; background: var(--head); border: 1px solid var(--line); border-radius: 6px;
-    padding: 6px 44px 6px 30px; font-size: 12.5px; color: var(--text);
+  .envchip.base { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+  .topactions { display: flex; align-items: center; gap: 6px; flex: none; }
+  @media (max-width: 1400px) { .card.optional { display: none; } }
+  .alertline {
+    position: fixed; top: var(--topbar); left: 0; right: 0; z-index: 39; padding: 3px 12px;
+    background: var(--danger-bg); border-bottom: 1px solid var(--danger-line); color: var(--danger);
+    font: 400 11px/1.5 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  #q:focus { outline: none; background: var(--panel); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  kbd {
-    position: absolute; right: 7px; top: 50%; transform: translateY(-50%); pointer-events: none;
-    font: 600 10px/1 var(--mono); color: var(--muted); background: var(--panel);
-    border: 1px solid var(--line-2); border-radius: 4px; padding: 3px 5px;
-  }
-  .topactions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 
   /* ── 버튼 · 배지 ───────────────────────────────────────────── */
   .btn {
     display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap;
     background: var(--panel); border: 1px solid var(--line-2); color: var(--text);
-    border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 500; box-shadow: var(--shadow);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 500; box-shadow: var(--shadow);
   }
-  .btn:hover { background: var(--head); border-color: var(--line-2); }
+  .btn:hover { background: var(--head); }
   .btn:active { transform: scale(.985); }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   .btn.primary:hover { background: var(--accent-hover); }
   .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
   .btn.ghost:hover { background: var(--head); color: var(--text); }
-  .btn.danger:hover { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger); }
   .btn[disabled] { opacity: .45; cursor: not-allowed; }
   .iconbtn {
     display: inline-grid; place-items: center; width: 22px; height: 22px; cursor: pointer;
-    border: 0; background: transparent; color: var(--muted); border-radius: 4px; padding: 0;
+    border: 0; background: transparent; color: var(--muted); border-radius: 4px; padding: 0; flex: none;
   }
   .iconbtn:hover { background: var(--head); color: var(--text); }
   .iconbtn.hot:hover { background: var(--accent-soft); color: var(--accent); }
@@ -116,178 +119,139 @@
   .badge.accent { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
   .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: currentColor; }
 
-  /* ── 좌측 탐색기 ───────────────────────────────────────────── */
-  .sidebar {
-    position: fixed; top: var(--toolbar); bottom: 0; left: 0; width: var(--sidebar); z-index: 30;
-    background: var(--panel); border-right: 1px solid var(--line);
-    display: flex; flex-direction: column; overflow: hidden;
+  /* ── 2패널 골격 ────────────────────────────────────────────── */
+  .shell { position: fixed; inset: var(--topbar) 0 0 0; display: grid; grid-template-columns: var(--left) minmax(0, 1fr); }
+  .shell.warned { top: calc(var(--topbar) + 22px); }
+  .left { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-width: 0; }
+  .right { overflow-y: auto; background: var(--bg); min-width: 0; }
+
+  /* ── 좌측: 검색 + 컬렉션 트리 ──────────────────────────────── */
+  .search { padding: 8px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; align-items: center; }
+  .searchbox { position: relative; flex: 1; }
+  .searchbox .ico { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--faint); }
+  #q {
+    width: 100%; background: var(--head); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 26px 6px 28px; font-size: 12.5px; color: var(--text);
   }
-  .sidebar nav { flex: 1; overflow-y: auto; padding: 8px; }
-  .navhead {
-    display: flex; align-items: center; justify-content: space-between; gap: 6px;
-    padding: 10px 8px 4px; font: 700 9.5px/1.4 var(--mono); letter-spacing: .1em;
+  #q:focus { outline: none; background: var(--panel); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  #q-clear { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); }
+  .tree { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+  .treefoot {
+    border-top: 1px solid var(--line); padding: 6px 10px; background: var(--panel-2);
+    font: 400 11px/1.5 var(--mono); color: var(--faint); display: flex; gap: 8px; align-items: center;
+  }
+  .col-head {
+    display: flex; align-items: center; gap: 5px; padding: 5px 8px; cursor: pointer; user-select: none;
+    background: var(--head); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 1;
+  }
+  .col-head .caret { color: var(--faint); transition: transform .12s; flex: none; }
+  .col-head.collapsed .caret { transform: rotate(-90deg); }
+  .col-head .name { font: 600 12px/1.5 -apple-system, system-ui, sans-serif; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-head .count { font: 500 10.5px/1.6 var(--mono); color: var(--faint); }
+  .col-head .tools { display: flex; gap: 1px; opacity: 0; }
+  .col-head:hover .tools { opacity: 1; }
+  .col-head.drop { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .col-head input.rename {
+    flex: 1; background: var(--panel); border: 1px solid var(--accent); border-radius: 4px;
+    padding: 2px 6px; font: 600 12px/1.5 -apple-system, system-ui, sans-serif;
+  }
+  .keyrow {
+    display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 22px; cursor: pointer;
+    border-bottom: 1px solid var(--line); border-left: 2px solid transparent; min-width: 0;
+  }
+  .keyrow:hover { background: var(--panel-2); }
+  .keyrow.on { background: var(--accent-soft); border-left-color: var(--accent); }
+  .keyrow.dragging { opacity: .4; }
+  .keyrow .kname { font: 600 12px/1.5 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .keyrow.on .kname { color: var(--accent); }
+  .keyrow .ksub { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .keyrow .kmain { flex: 1; min-width: 0; }
+  .envdots { display: flex; gap: 3px; flex: none; }
+  .envdot {
+    font: 600 9px/1.5 var(--mono); text-transform: uppercase; padding: 0 4px; border-radius: 3px;
+    border: 1px solid var(--line); color: var(--faint); background: var(--panel-2);
+  }
+  .envdot.set { color: var(--ok); border-color: var(--ok-line); background: var(--ok-bg); }
+  .envdot.bad { color: var(--danger); border-color: var(--danger-line); background: var(--danger-bg); }
+  .empty { padding: 24px 16px; text-align: center; color: var(--faint); font-size: 12px; }
+
+  /* ── 우측: 상세 ────────────────────────────────────────────── */
+  .detail { padding: 14px 16px 40px; }
+  /* 표를 2열로 나눠 각 표의 너비를 줄인다. 한 줄에 담기는 글자가 줄어 눈이 덜 움직인다. */
+  .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 12px; }
+  .detail-grid > .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  @media (max-width: 1250px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
+  .detail-head { display: flex; align-items: flex-start; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .detail-head h1 { margin: 4px 0 0; font: 700 18px/1.25 var(--mono); color: var(--accent); word-break: break-all; }
+  .badges { display: flex; gap: 4px; flex-wrap: wrap; }
+  .section { min-width: 0; }
+  .sechead {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px;
+    font: 700 11px/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint);
+  }
+  table.kv { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  table.kv th, table.kv td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  table.kv thead th {
+    background: var(--head); font: 700 11.5px/1.5 var(--mono); letter-spacing: .06em;
     text-transform: uppercase; color: var(--faint);
   }
-  .navitem {
-    display: flex; align-items: center; gap: 7px; width: 100%; cursor: pointer; text-align: left;
-    padding: 5px 8px; border-radius: 5px; border: 0; background: transparent; color: var(--muted);
-    font-size: 12.5px; border-left: 2px solid transparent;
-  }
-  .navitem:hover { background: var(--head); color: var(--text); }
-  .navitem.on { background: var(--accent-soft); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
-  .navitem .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .navitem .count { font: 500 10.5px/1.6 var(--mono); color: var(--faint); background: var(--head); border-radius: 4px; padding: 0 5px; }
-  .navitem.on .count { background: var(--panel); color: var(--accent); border: 1px solid var(--accent-line); }
-  .storecard { border-top: 1px solid var(--line); padding: 10px; background: var(--panel-2); }
-  .storecard .row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .storecard .path { font: 400 10.5px/1.5 var(--mono); color: var(--muted); word-break: break-all; margin-top: 4px; }
-
-  /* ── 본문 ──────────────────────────────────────────────────── */
-  main { margin-left: var(--sidebar); padding: calc(var(--toolbar) + 14px) 16px 28px; }
-  .crumbs { display: flex; align-items: center; gap: 6px; font: 500 11.5px/1.5 var(--mono); color: var(--faint); }
-  .crumbs .sep { color: var(--line-2); }
-  .titlerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 5px 0 14px; }
-  h1 { font-size: 17px; margin: 0; letter-spacing: -.015em; }
-  .capsule {
-    display: flex; align-items: center; gap: 8px; margin-left: auto; padding: 5px 9px;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow);
-    font-size: 11.5px; color: var(--muted);
-  }
-  .capsule b { color: var(--text); font-size: 12px; }
-
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 8px; margin-bottom: 10px; }
-  .metric { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; box-shadow: var(--shadow); }
-  .metric:hover { border-color: var(--accent-line); }
-  .metric .top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .metric .name { font: 700 9.5px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-  .metric .num { font: 700 21px/1.2 var(--mono); letter-spacing: -.02em; }
-  .metric .unit { font: 400 11.5px/1.2 var(--mono); color: var(--muted); }
-  .metric .note { font: 400 11px/1.4 var(--mono); color: var(--muted); margin-top: 3px; }
-
-  .filterbar {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; box-shadow: var(--shadow);
-  }
-  .pills { display: inline-flex; gap: 3px; padding: 2px; background: var(--head); border: 1px solid var(--line); border-radius: 6px; }
-  .pill {
-    display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border: 0; background: transparent;
-    color: var(--muted); border-radius: 4px; padding: 3px 8px; font: 600 11.5px/1.5 var(--mono); white-space: nowrap;
-  }
-  .pill:hover { color: var(--text); }
-  .pill.on { background: var(--panel); color: var(--accent); box-shadow: var(--shadow); border-bottom: 2px solid var(--accent); padding-bottom: 1px; }
-  select.sort {
-    background: var(--head); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px;
-    font-size: 11.5px; color: var(--muted); cursor: pointer;
-  }
-  .spacer { flex: 1; }
-
-  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector); gap: 10px; align-items: start; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); }
-  .gridwrap { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
-  .scroll { overflow-x: auto; }
-
-  /* ── 표 ────────────────────────────────────────────────────── */
-  table.grid { width: 100%; table-layout: fixed; border-collapse: collapse; }
-  table.grid thead th {
-    position: sticky; top: 0; z-index: 2; text-align: left; background: var(--head);
-    border-bottom: 1px solid var(--line); padding: 6px 8px; color: var(--muted);
-    font: 700 9.5px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; user-select: none;
-  }
-  table.grid th.env-h { border-left: 1px solid var(--line); }
-  table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  table.grid td.envcell { border-left: 1px solid var(--line); }
-  table.grid tr.row { cursor: pointer; }
-  table.grid tr.row:hover td { background: var(--panel-2); }
-  table.grid tr.row.on td { background: var(--accent-soft); }
-  table.grid tr.row.on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
-  table.grid tr.row.checked td:first-child { box-shadow: inset 3px 0 0 var(--info); }
-  .keycell { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .keyname { font: 600 12px/1.5 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  tr.row.on .keyname { color: var(--accent); }
-  .sub { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 16px; }
-  .chips { display: flex; gap: 3px; overflow: hidden; }
-  .chip {
-    font: 400 10.5px/1.6 var(--mono); background: var(--head); border: 1px solid var(--line);
-    border-radius: 4px; padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-  }
-  .chip.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
-  .valcell { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .val { font: 400 11.5px/1.6 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  table.kv tbody th { background: var(--panel-2); font: 500 13.5px/1.5 var(--mono); color: var(--muted); font-weight: 500; }
+  table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
+  table.kv td { font: 400 14px/1.55 var(--mono); word-break: break-all; }
+  .val { font: 400 14px/1.55 var(--mono); word-break: break-all; }
   .val.masked { color: var(--muted); letter-spacing: 1.5px; }
   .val.plain { color: var(--ok); }
   .val.none { color: var(--faint); font-style: italic; }
   .val.bad { color: var(--danger); }
-  .cellacts { display: flex; gap: 1px; flex: none; opacity: 0; transition: opacity .1s; }
-  td:hover .cellacts, tr.row.on .cellacts { opacity: 1; }
-  .rowacts { display: flex; gap: 1px; justify-content: flex-end; opacity: 0; transition: opacity .1s; }
-  tr.row:hover .rowacts, tr.row.on .rowacts { opacity: 1; }
-  input.inline {
+  .rowacts { display: flex; gap: 1px; justify-content: flex-end; }
+  /* 클릭하면 그 자리에서 편집된다 — 편집 버튼을 따로 찾지 않는다. */
+  .edit-target { cursor: text; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; display: block; min-height: 22px; }
+  .edit-target:hover { background: var(--head); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .edit-target.locked { cursor: not-allowed; }
+  .edit-target.locked:hover { background: transparent; box-shadow: none; }
+  input.inline, textarea.inline {
     width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--accent);
-    border-radius: 4px; padding: 3px 6px; font: 400 11.5px/1.5 var(--mono);
+    border-radius: 4px; padding: 5px 7px; font: 400 14px/1.55 var(--mono); resize: vertical;
   }
-  input.inline:focus { outline: none; box-shadow: 0 0 0 1px var(--accent); }
-  .bulkbar {
-    display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-    background: var(--info-bg); border-bottom: 1px solid var(--line); font-size: 11.5px; color: var(--info);
+  input.inline:focus, textarea.inline:focus { outline: none; box-shadow: 0 0 0 1px var(--accent); }
+  select.pick {
+    background: var(--panel); border: 1px solid var(--line-2); border-radius: 5px;
+    padding: 5px 7px; font: 400 13.5px/1.5 var(--mono); cursor: pointer; max-width: 100%;
   }
-  .tfoot {
-    display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--head);
-    border-top: 1px solid var(--line); font: 400 11.5px/1.6 var(--mono); color: var(--muted);
-  }
-  .blank { padding: 40px 16px; text-align: center; color: var(--faint); font-size: 12.5px; }
-
-  /* ── 인스펙터 ──────────────────────────────────────────────── */
-  .inspector { position: sticky; top: calc(var(--toolbar) + 14px); max-height: calc(100vh - var(--toolbar) - 28px); overflow-y: auto; }
-  .insp-head { display: flex; align-items: flex-start; gap: 8px; padding: 11px 12px; border-bottom: 1px solid var(--line); }
-  .insp-head h2 { margin: 3px 0 0; font: 700 14px/1.3 var(--mono); color: var(--accent); word-break: break-all; }
-  .section { padding: 11px 12px; border-bottom: 1px solid var(--line); }
-  .section:last-child { border-bottom: 0; }
-  .sechead {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;
-    font: 700 9.5px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
-  }
-  table.kv { width: 100%; table-layout: fixed; border-collapse: collapse; border: 1px solid var(--line); border-radius: 5px; }
-  table.kv th, table.kv td { padding: 5px 7px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
-  table.kv thead th {
-    background: var(--head); font: 700 9.5px/1.5 var(--mono); letter-spacing: .06em;
-    text-transform: uppercase; color: var(--faint);
-  }
-  table.kv tbody th {
-    width: 84px; background: var(--panel-2); font: 500 11px/1.5 var(--mono); color: var(--muted); font-weight: 500;
-  }
-  table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
-  table.kv td { font: 400 11.5px/1.5 var(--mono); word-break: break-all; }
-  table.kv .val { white-space: normal; overflow: visible; text-overflow: clip; word-break: break-all; }
-  table.kv td.wrapv { white-space: pre-wrap; }
-  .cmd {
-    display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line);
-    border-radius: 4px; padding: 4px 6px; font: 400 11px/1.5 var(--mono); color: var(--text);
-  }
-  .cmd code { flex: 1; overflow-x: auto; white-space: nowrap; }
-  .note { font-size: 11px; color: var(--muted); }
-  .err { color: var(--danger); font-size: 11px; margin-top: 4px; }
+  .cmd { display: flex; align-items: center; gap: 6px; }
+  .cmd code { flex: 1; min-width: 0; word-break: break-all; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+  .err { color: var(--danger); font-size: 12.5px; margin-top: 6px; }
   a { color: var(--accent); }
+  .blank { display: grid; place-items: center; height: 100%; color: var(--faint); text-align: center; padding: 40px; }
 
   /* ── 모달 · 토스트 ─────────────────────────────────────────── */
   .backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(12, 14, 18, .45); display: grid; place-items: center; padding: 20px; }
-  .modal { width: min(560px, 100%); max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
-  .modal header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .modal { width: min(680px, 100%); max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
+  .modal header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
   .modal header b { font-size: 13.5px; }
   .modal .body { padding: 12px 14px; display: grid; gap: 10px; }
   .modal footer { display: flex; gap: 6px; justify-content: flex-end; padding: 11px 14px; border-top: 1px solid var(--line); background: var(--panel-2); }
   .field { display: grid; gap: 4px; }
   .field > label { font: 700 9.5px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-  .field input[type=text], .field textarea {
+  .field input[type=text] {
     width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 5px;
     padding: 6px 8px; font: 400 12px/1.5 var(--mono); color: var(--text);
   }
-  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .field .hint { font-size: 11px; color: var(--faint); }
   .radios { display: flex; gap: 6px; }
   .radio { flex: 1; display: flex; gap: 7px; align-items: flex-start; padding: 7px 9px; border: 1px solid var(--line-2); border-radius: 5px; cursor: pointer; }
   .radio.on { border-color: var(--accent); background: var(--accent-soft); }
   .radio b { font-size: 12px; }
   .radio span { font-size: 10.5px; color: var(--muted); display: block; }
+  .doc h3 { font-size: 12.5px; margin: 14px 0 6px; }
+  .doc h3:first-child { margin-top: 0; }
+  .doc p { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+  .doc pre {
+    margin: 0 0 8px; padding: 9px 11px; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 6px; font: 400 11.5px/1.6 var(--mono); overflow-x: auto; color: var(--text);
+  }
   #toast {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 80; max-width: 70vw;
     background: var(--text); color: var(--bg); border-radius: 6px; padding: 8px 14px; font-size: 12.5px;
@@ -295,14 +259,8 @@
   }
   #toast.show { opacity: 1; }
 
-  @media (max-width: 1180px) {
-    .workspace { grid-template-columns: minmax(0, 1fr); }
-    .inspector { position: static; max-height: none; }
-  }
-  @media (max-width: 900px) {
-    .sidebar { display: none; }
-    main { margin-left: 0; }
-    .brand { width: auto; }
+  @media (max-width: 1100px) {
+    :root { --left: 340px; }
   }
 </style>
 </head>
@@ -310,87 +268,53 @@
 <header class="topbar">
   <div class="brand">
     <span class="logo" id="logo"></span>
-    <b>Config Provider</b>
-    <span class="tag">studio</span>
+    <div>
+      <b>Config Provider</b>
+      <small>로컬 설정 · 비밀값 금고</small>
+    </div>
   </div>
-  <div class="omni">
-    <span class="ico" id="qico"></span>
-    <input id="q" placeholder="key · 별칭 · 설명으로 검색  (예: 입고지시)" autocomplete="off" spellcheck="false" autofocus />
-    <kbd>/</kbd>
-  </div>
+  <div class="cards" id="cards"></div>
   <div class="topactions">
-    <span class="badge" id="daemon">연결 중…</span>
+    <button class="btn ghost" id="readme">README</button>
+    <button class="btn" id="revealall"></button>
+    <button class="btn" id="envcopy">.env 복사</button>
     <button class="btn" id="reload">reload</button>
     <button class="btn primary" id="new">새 항목</button>
   </div>
 </header>
 
-<aside class="sidebar">
-  <nav id="nav"></nav>
-  <div class="storecard" id="storecard"></div>
-</aside>
-
-<main>
-  <div class="crumbs">
-    <span>워크스페이스</span>
-    <span class="sep">/</span>
-    <span>설정 · 비밀값</span>
-    <span class="sep">/</span>
-    <span class="badge accent" id="crumb-scope">모든 env</span>
-  </div>
-  <div class="titlerow">
-    <h1>설정 값 매트릭스</h1>
-    <span class="badge" id="mode-badge"></span>
-    <div class="capsule" id="capsule"></div>
-  </div>
-
-  <section class="metrics" id="metrics"></section>
-
-  <section class="filterbar">
-    <div class="pills" id="envpills"></div>
-    <div class="pills" id="vispills"></div>
-    <select class="sort" id="sort">
-      <option value="key">정렬: key</option>
-      <option value="unset">정렬: 미설정 먼저</option>
-      <option value="secret">정렬: secret 먼저</option>
-      <option value="type">정렬: 종류</option>
-    </select>
-    <span class="spacer"></span>
-    <button class="btn" id="revealall"></button>
-    <button class="btn" id="envcopy">.env 복사</button>
-  </section>
-
-  <div class="workspace">
-    <div class="panel gridwrap">
-      <div id="bulkbar"></div>
-      <div class="scroll">
-        <table class="grid" id="grid">
-          <colgroup id="cols"></colgroup>
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
+<div class="shell" id="shell">
+  <aside class="left">
+    <div class="search">
+      <div class="searchbox">
+        <span class="ico" id="qico"></span>
+        <input id="q" placeholder="key · 별칭 · 설명 검색" autocomplete="off" spellcheck="false" autofocus />
+        <span id="q-clear"></span>
       </div>
-      <div class="tfoot" id="tfoot"></div>
+      <button class="btn" id="newcol" title="새 컬렉션">+ 컬렉션</button>
     </div>
-    <aside class="panel inspector" id="inspector"></aside>
-  </div>
-</main>
+    <div class="tree" id="tree"></div>
+    <div class="treefoot" id="treefoot"></div>
+  </aside>
+  <main class="right" id="right"></main>
+</div>
 
 <div id="modal-root"></div>
 <div id="toast"></div>
 
 <script>
-// 평문 값을 localStorage·sessionStorage에 절대 넣지 않는다. 상태는 메모리에만 둔다(§4.4).
+// 평문 값을 localStorage·sessionStorage에 절대 넣지 않는다. 상태는 메모리에만 둔다 (스펙 §4.4).
 const state = {
   items: [], envs: [], defaultEnv: 'dev', degraded: false, status: null,
-  q: '', envFilter: 'all', visFilter: 'all', navFilter: { kind: 'all', value: null }, sort: 'key',
-  selected: null, editing: null, checked: new Set(), revealed: new Set(),
-  revealAllUntil: 0, revealTimer: null, clipboardTimer: null, toastTimer: null,
+  collections: [], uncategorized: [], resourceTypes: [],
+  q: '', selected: null, collapsed: new Set(), editing: null,
+  revealed: new Set(), revealAllUntil: 0, revealTimer: null,
+  clipboardTimer: null, toastTimer: null, drag: null,
 };
 
 const $ = (id) => document.getElementById(id);
 
-/* ── 아이콘: 외부 아이콘 폰트를 쓰지 않는다(CSP·오프라인) ─────────────── */
+/* ── 아이콘: 외부 아이콘 폰트를 쓰지 않는다 (CSP·오프라인) ─────────── */
 const PATHS = {
   search: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z', 'm16.5 16.5 4 4'],
   send: ['m3 11 18-8-8 18-2.5-7.5L3 11Z'],
@@ -400,20 +324,16 @@ const PATHS = {
   edit: ['M4 20h4L20 8l-4-4L4 16v4Z', 'm14 6 4 4'],
   trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
   plus: ['M12 5v14', 'M5 12h14'],
-  close: ['m6 6 12 12', 'M18 6 6 18'],
+  close: ['m6 6 12 12M18 6 6 18'],
   check: ['m5 13 4 4 10-10'],
-  refresh: ['M20 12a8 8 0 1 1-2.3-5.6', 'M20 4v5h-5'],
+  caret: ['m6 9 6 6 6-6'],
   lock: ['M6 11h12v9H6z', 'M9 11V8a3 3 0 0 1 6 0v3'],
   unlock: ['M6 11h12v9H6z', 'M9 11V8a3 3 0 0 1 5.8-1.7'],
-  key: ['M15 7a4 4 0 1 1-3.6 5.7L8 16.4V19H5v-3l6.3-6.3A4 4 0 0 1 15 7Z'],
-  terminal: ['m5 7 4 4-4 4', 'M12 16h7'],
+  folder: ['M3 6h6l2 2h10v11H3z'],
   link: ['M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1', 'M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1'],
   alert: ['M12 8v5', 'M12 17h.01', 'M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'],
-  folder: ['M3 6h6l2 2h10v11H3z'],
-  layers: ['m12 3 9 5-9 5-9-5 9-5Z', 'm3 14 9 5 9-5'],
-  tag: ['M3 12V4h8l9 9-8 8-9-9Z', 'M7.5 7.5h.01'],
-  shield: ['M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6l8-3Z'],
-  db: ['M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3Z', 'M20 6v12c0 1.7-3.6 3-8 3s-8-1.3-8-3V6'],
+  book: ['M4 4h7a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z', 'M20 4h-4a3 3 0 0 0-2 5.2V20a2.5 2.5 0 0 1 2.5-2.5H20z'],
+  drag: ['M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01'],
 };
 function icon(name, size = 14) {
   const NS = 'http://www.w3.org/2000/svg';
@@ -462,8 +382,8 @@ function btn(label, onClick, className = 'btn', iconName) {
 async function api(method, path, body) {
   const res = await fetch('/api' + path, {
     method,
-    headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     cache: 'no-store',
   });
   const json = await res.json().catch(() => null);
@@ -485,8 +405,8 @@ function refsOf(template) {
 /**
  * API 응답을 화면이 쓰는 모양으로 정규화한다.
  *
- * 서버는 치환 결과(values)와 원본 템플릿(rawValues)을 따로 준다. 편집은 항상
- * 템플릿 기준이어야 하므로(치환 결과를 저장하면 참조가 상수로 굳는다) 둘을 한 칸에 묶는다.
+ * 서버는 치환 결과(values)와 원본 템플릿(rawValues)을 따로 준다. 편집은 항상 템플릿
+ * 기준이어야 하므로(치환 결과를 저장하면 참조가 상수로 굳는다) 둘을 한 칸에 묶는다.
  */
 function normalizeItem(it) {
   const values = {};
@@ -497,7 +417,7 @@ function normalizeItem(it) {
     values[env] = {
       template,
       resolved: v.value,
-      status: v.status === 'ok' ? 'set' : v.status, // ok | unset | locked | error
+      status: v.status === 'ok' ? 'set' : v.status, // set | unset | locked | error
       refs: refsOf(template),
       error: v.error,
     };
@@ -517,7 +437,11 @@ function normalizeItem(it) {
 }
 
 async function load() {
-  const [status, data] = await Promise.all([api('GET', '/status'), api('GET', '/items?values=true')]);
+  const [status, data, cols] = await Promise.all([
+    api('GET', '/status'),
+    api('GET', '/items?values=true'),
+    api('GET', '/collections'),
+  ]);
   state.status = status;
   state.items = data.items.map(normalizeItem);
   state.envs = status.envs?.length
@@ -525,527 +449,337 @@ async function load() {
     : [...new Set(state.items.flatMap((i) => Object.keys(i.values)))].sort();
   state.defaultEnv = status.defaultEnv ?? 'dev';
   state.degraded = status.mode !== 'full';
-  if (state.envFilter !== 'all' && !state.envs.includes(state.envFilter)) state.envFilter = 'all';
+  state.resourceTypes = status.resourceTypes ?? [];
+  state.collections = cols.collections;
+  state.uncategorized = cols.uncategorized;
   if (state.selected && !state.items.some((i) => i.key === state.selected)) state.selected = null;
   renderAll();
 }
 
 /* ── 파생 계산 ──────────────────────────────────────────────── */
 function itemOf(key) { return state.items.find((i) => i.key === key) ?? null; }
-function visibleEnvs() { return state.envFilter === 'all' ? state.envs : [state.envFilter]; }
 function isSecret(item) { return item.visibility === 'secret'; }
 function revealActive() { return state.revealAllUntil > Date.now(); }
 function isRevealed(item, env) {
   if (!isSecret(item)) return true;
   return revealActive() || state.revealed.has(`${item.key}::${env}`);
 }
-function envStat(env) {
-  let set = 0, unset = 0, defined = 0;
-  for (const item of state.items) {
-    const v = item.values[env];
-    if (!v) continue;
-    defined++;
-    v.status === 'set' ? set++ : unset++;
-  }
-  return { set, unset, defined };
-}
-/** 참조가 깨졌거나 축소 모드로 잠긴 값 — 둘 다 '지금 못 쓰는 값'이라 같이 센다. */
-function errorCount() {
-  return state.items.filter((i) =>
-    Object.values(i.values).some((v) => v && (v.status === 'error' || v.status === 'locked'))).length;
-}
-function unsetCount() {
-  return state.items.filter((i) => Object.values(i.values).some((v) => v && v.status === 'unset')).length;
-}
-function typeGroups() {
-  const map = new Map();
-  for (const item of state.items) {
-    const t = item.resource_type || '(분류 없음)';
-    map.set(t, (map.get(t) ?? 0) + 1);
-  }
-  return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-}
-
 function matchesQuery(item, q) {
   if (!q) return true;
-  const n = (s) => (s || '').replace(/\s+/g, '').toLowerCase();
+  const n = (s) => (s || '').normalize('NFC').toLowerCase().replace(/[\s_-]+/g, '');
   const needle = n(q);
   return n(item.key).includes(needle) || n(item.desc).includes(needle) ||
     n(item.resource_type).includes(needle) || item.alias.some((a) => n(a).includes(needle));
 }
-
-function filtered() {
-  const nav = state.navFilter;
-  let rows = state.items.filter((item) => {
-    if (!matchesQuery(item, state.q)) return false;
-    if (state.visFilter !== 'all' && item.visibility !== state.visFilter) return false;
-    if (state.envFilter !== 'all' && !item.values[state.envFilter]) return false;
-    if (nav.kind === 'type' && (item.resource_type || '(분류 없음)') !== nav.value) return false;
-    if (nav.kind === 'unset' && !Object.values(item.values).some((v) => v && v.status === 'unset')) return false;
-    if (nav.kind === 'error' && !Object.values(item.values).some((v) => v && (v.status === 'error' || v.status === 'locked'))) return false;
-    if (nav.kind === 'ref' && !Object.values(item.values).some((v) => v && v.refs && v.refs.length)) return false;
-    return true;
-  });
-  const byKey = (a, b) => a.key.localeCompare(b.key);
-  const unsetRank = (i) => (Object.values(i.values).some((v) => v && v.status === 'unset') ? 0 : 1);
-  if (state.sort === 'unset') rows = rows.sort((a, b) => unsetRank(a) - unsetRank(b) || byKey(a, b));
-  else if (state.sort === 'secret') rows = rows.sort((a, b) => Number(isSecret(b)) - Number(isSecret(a)) || byKey(a, b));
-  else if (state.sort === 'type') rows = rows.sort((a, b) => (a.resource_type || '~').localeCompare(b.resource_type || '~') || byKey(a, b));
-  else rows = rows.sort(byKey);
-  return rows;
+/** 컬렉션 + 미분류를 한 줄기로 만든다. 미분류는 저장되지 않는 파생 그룹이다. */
+function groups() {
+  const list = state.collections.map((c) => ({ name: c.name, keys: c.keys, real: true }));
+  list.push({ name: '미분류', keys: state.uncategorized, real: false });
+  return list;
+}
+function collectionOf(key) {
+  return state.collections.find((c) => c.keys.includes(key))?.name ?? null;
 }
 
 /* ── 렌더 ───────────────────────────────────────────────────── */
 function renderAll() {
-  renderHeader();
-  renderNav();
-  renderMetrics();
-  renderFilters();
-  renderTable();
-  renderInspector();
+  renderTop();
+  renderTree();
+  renderDetail();
 }
 
-function renderHeader() {
+function renderTop() {
   const s = state.status;
-  const daemon = $('daemon');
-  daemon.textContent = '';
-  daemon.className = 'badge ' + (state.degraded ? 'err' : 'ok');
-  daemon.append(icon(state.degraded ? 'unlock' : 'lock', 12), el('span', null, state.degraded ? '축소 모드' : 'full'));
-
-  const mode = $('mode-badge');
-  mode.textContent = '';
-  mode.className = 'badge ' + (state.degraded ? 'err' : 'ok');
-  mode.append(el('span', 'dot'), el('span', null, state.degraded ? 'secret 값 잠김 — dkc doctor' : '데몬 연결됨'));
-
-  $('crumb-scope').textContent = state.envFilter === 'all' ? '모든 env' : `env: ${state.envFilter}`;
-
-  const cap = $('capsule');
-  cap.textContent = '';
-  cap.append(icon('layers', 14));
-  const box = el('div');
-  const line1 = el('div');
-  line1.append(el('b', null, `${state.items.length}개 항목`), el('span', null, ` · env ${state.envs.join(' / ') || '없음'}`));
-  const line2 = el('div', 'mono');
-  line2.style.fontSize = '11px';
-  line2.textContent = `기본 env ${state.defaultEnv}` +
-    (s ? ` · secret ${s.secretItems}개 · 로드 ${new Date(s.loadedAt).toLocaleTimeString('ko-KR')}` : '');
-  box.append(line1, line2);
-  cap.append(box);
-}
-
-function renderNav() {
-  const nav = $('nav');
-  nav.textContent = '';
-
-  const group = (title, action) => {
-    const h = el('div', 'navhead');
-    h.append(el('span', null, title));
-    if (action) h.append(action);
-    nav.append(h);
-  };
-  const item = (opts) => {
-    const b = el('button', 'navitem' + (opts.on ? ' on' : ''));
-    b.type = 'button';
-    if (opts.icon) b.append(icon(opts.icon, 14));
-    if (opts.badge) b.append(opts.badge);
-    b.append(el('span', 'label', opts.label));
-    if (opts.count !== undefined) b.append(el('span', 'count', String(opts.count)));
-    b.onclick = opts.onClick;
-    nav.append(b);
-    return b;
-  };
-
-  group('탐색기');
-  item({
-    icon: 'folder', label: '전체 항목', count: state.items.length,
-    on: state.navFilter.kind === 'all' && state.envFilter === 'all' && state.visFilter === 'all',
-    onClick: () => { state.navFilter = { kind: 'all', value: null }; state.envFilter = 'all'; state.visFilter = 'all'; renderAll(); },
-  });
-
-  group('env');
-  for (const env of state.envs) {
-    const stat = envStat(env);
-    const badge = el('span', 'badge ' + (env === 'prod' ? 'secret' : 'public'), env.slice(0, 4).toUpperCase());
-    item({
-      badge, label: env, count: stat.defined, on: state.envFilter === env,
-      onClick: () => { state.envFilter = state.envFilter === env ? 'all' : env; renderAll(); },
-    });
-  }
-
-  group('분류');
-  for (const [type, count] of typeGroups()) {
-    item({
-      icon: 'db', label: type, count,
-      on: state.navFilter.kind === 'type' && state.navFilter.value === type,
-      onClick: () => {
-        state.navFilter = state.navFilter.value === type ? { kind: 'all', value: null } : { kind: 'type', value: type };
-        renderAll();
-      },
-    });
-  }
-
-  group('상태');
-  const flag = (kind, label, iconName, count) => item({
-    icon: iconName, label, count, on: state.navFilter.kind === kind,
-    onClick: () => {
-      state.navFilter = state.navFilter.kind === kind ? { kind: 'all', value: null } : { kind, value: null };
-      renderAll();
-    },
-  });
-  flag('unset', '미설정 포함', 'alert', unsetCount());
-  flag('error', '참조 오류', 'alert', errorCount());
-  flag('ref', '참조 사용', 'link', state.items.filter((i) => Object.values(i.values).some((v) => v && v.refs && v.refs.length)).length);
-
-  const s = state.status;
-  const card = $('storecard');
-  card.textContent = '';
-  const row = el('div', 'row');
-  row.append(el('span', 'navhead', '데몬 · 정책'));
-  const mark = el('span', 'badge ' + (state.degraded ? 'err' : 'ok'));
-  mark.append(el('span', 'dot'), el('span', null, state.degraded ? 'reduced' : 'sops+age'));
-  row.append(mark);
-  card.append(row);
-  card.append(el('div', 'path', s?.policyLoaded ? `정책: ${s.policyPath}` : '정책 파일 없음 — 에이전트 기본 deny'));
-  if (state.degraded && s?.degradedReason) card.append(el('div', 'err', s.degradedReason));
-  for (const w of s?.warnings ?? []) card.append(el('div', 'err', w));
-}
-
-function renderMetrics() {
-  const box = $('metrics');
+  const box = $('cards');
   box.textContent = '';
-  const card = (name, iconName, num, unit, note, tone) => {
-    const c = el('div', 'metric');
-    const top = el('div', 'top');
-    top.append(el('span', 'name', name), icon(iconName, 15));
-    top.lastChild.style.color = tone ? `var(--${tone})` : 'var(--faint)';
-    const numRow = el('div');
-    numRow.style.cssText = 'display:flex;align-items:baseline;gap:6px;margin-top:4px';
-    numRow.append(el('span', 'num', num), el('span', 'unit', unit));
-    c.append(top, numRow, el('div', 'note', note));
+
+  // 카드마다 "이 숫자가 무엇인가"를 라벨로 먼저 말한다. 숫자만 나열하면 읽는 사람이
+  // 매번 뜻을 되짚어야 하고, 그 되짚음이 이 화면에서 가장 자주 일어나는 낭비였다.
+  const card = (opts) => {
+    const c = el('div', 'card' + (opts.tone ? ' tone-' + opts.tone : '') + (opts.optional ? ' optional' : ''));
+    c.append(el('div', 'label', opts.label));
+    if (opts.body) {
+      c.append(opts.body);
+    } else {
+      const main = el('div', 'main');
+      main.append(el('span', 'num', opts.num));
+      if (opts.unit) main.append(el('span', 'unit', opts.unit));
+      c.append(main);
+    }
+    if (opts.sub) c.append(el('div', 'sub', opts.sub));
+    if (opts.title) c.title = opts.title;
     box.append(c);
   };
 
   const secrets = state.items.filter(isSecret).length;
-  card('전체 항목', 'key', String(state.items.length), '개', `public ${state.items.length - secrets} · secret ${secrets}`, 'accent');
+  card({
+    label: '저장된 항목',
+    num: String(state.items.length),
+    unit: '개',
+    sub: `공개 ${state.items.length - secrets} · 비밀 ${secrets}`,
+    title: 'public.yaml과 secret.yaml에 정의된 key의 수',
+  });
+
+  const unset = state.items.filter((i) => Object.values(i.values).some((v) => v.status === 'unset')).length;
+  const broken = state.items.filter((i) => Object.values(i.values).some((v) => v.status === 'error' || v.status === 'locked')).length;
+  card({
+    label: '손볼 항목',
+    num: String(unset + broken),
+    unit: '개',
+    sub: `미설정 ${unset} · 문제 ${broken}`,
+    tone: broken ? 'err' : undefined,
+    title: '값이 비어 있거나(미설정) 치환에 실패한 항목',
+  });
+
+  const envs = el('div', 'envchips');
   for (const env of state.envs) {
-    const stat = envStat(env);
-    card(env, env === 'prod' ? 'shield' : 'layers', String(stat.set), `/ ${stat.defined} 설정됨`,
-      stat.unset ? `미설정 ${stat.unset}개` : '미설정 없음', env === 'prod' ? 'ok' : 'info');
+    const chip = el('span', 'envchip' + (env === state.defaultEnv ? ' base' : ''), env);
+    chip.title = env === state.defaultEnv ? '기본 env — 조회에서 생략하면 이 값이 쓰인다' : env;
+    envs.append(chip);
   }
-  const errors = errorCount();
-  card('무결성', errors ? 'alert' : 'check', errors ? String(errors) : '정상', errors ? '개 항목 문제' : '',
-    state.degraded ? '축소 모드 — secret 값 잠김' : '모든 참조가 치환됩니다', errors ? 'danger' : 'ok');
-}
+  if (state.envs.length === 0) envs.append(el('span', 'envchip', '없음'));
+  card({
+    label: '환경',
+    body: envs,
+    sub: `기본 ${state.defaultEnv} — 생략하면 이 env`,
+    title: 'env를 생략한 조회가 어디를 보는지. prod는 항상 명시적이어야 한다',
+    optional: true,
+  });
 
-function renderFilters() {
-  const envpills = $('envpills');
-  envpills.textContent = '';
-  const pill = (host, label, on, onClick, dotTone) => {
-    const b = el('button', 'pill' + (on ? ' on' : ''));
-    b.type = 'button';
-    if (dotTone) {
-      const d = el('span', 'dot');
-      d.style.color = `var(--${dotTone})`;
-      b.append(d);
-    }
-    b.append(el('span', null, label));
-    b.onclick = onClick;
-    host.append(b);
-  };
-  pill(envpills, `ALL (${state.items.length})`, state.envFilter === 'all', () => { state.envFilter = 'all'; renderAll(); });
-  for (const env of state.envs) {
-    const stat = envStat(env);
-    pill(envpills, `${env.toUpperCase()} (${stat.defined})`, state.envFilter === env,
-      () => { state.envFilter = env; renderAll(); }, env === 'prod' ? 'ok' : 'info');
-  }
+  card({
+    label: '비밀값 읽기',
+    num: state.degraded ? '잠김' : '가능',
+    sub: state.degraded ? 'age 개인키를 찾지 못했습니다' : 'age 키로 복호화됨',
+    tone: state.degraded ? 'err' : 'ok',
+    title: state.degraded ? (s?.degradedReason ?? '') : 'secret.yaml의 값을 평문으로 볼 수 있는 상태',
+  });
 
-  const vispills = $('vispills');
-  vispills.textContent = '';
-  const secrets = state.items.filter(isSecret).length;
-  pill(vispills, '전체', state.visFilter === 'all', () => { state.visFilter = 'all'; renderAll(); });
-  pill(vispills, `public ${state.items.length - secrets}`, state.visFilter === 'public', () => { state.visFilter = 'public'; renderAll(); }, 'info');
-  pill(vispills, `secret ${secrets}`, state.visFilter === 'secret', () => { state.visFilter = 'secret'; renderAll(); }, 'warn');
-
-  $('sort').value = state.sort;
+  card({
+    label: '마지막 읽기',
+    num: s ? new Date(s.loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—',
+    sub: '파일을 고쳤다면 reload',
+    optional: true,
+    title: '데몬이 저장소 파일을 읽어들인 시각',
+  });
 
   const reveal = $('revealall');
   reveal.textContent = '';
   const on = revealActive();
   reveal.append(icon(on ? 'eyeoff' : 'eye', 13));
-  reveal.append(el('span', null, on ? `가리기 (${Math.ceil((state.revealAllUntil - Date.now()) / 1000)}s)` : '전체 보기 (15s)'));
+  reveal.append(el('span', null, on ? `가리기 ${Math.ceil((state.revealAllUntil - Date.now()) / 1000)}s` : '전체 보기'));
+
+  // 축소 모드나 경고는 평소에 자리를 차지하지 않는다 — 문제일 때만 한 줄 나타난다.
+  const old = document.querySelector('.alertline');
+  if (old) old.remove();
+  const warnings = [s?.degradedReason, ...(s?.warnings ?? [])].filter(Boolean);
+  $('shell').classList.toggle('warned', warnings.length > 0);
+  if (warnings.length) {
+    const line = el('div', 'alertline', `⚠ ${warnings.join(' · ')}`);
+    document.body.insertBefore(line, $('shell'));
+  }
 }
 
-const COLS = { check: '30px', key: '21%', alias: '12%', type: '8%', acts: '76px' };
+function renderTree() {
+  const tree = $('tree');
+  tree.textContent = '';
+  const q = state.q.trim();
+  let shown = 0;
 
-/** 좁은 화면에서는 별칭·종류 열을 접는다 — 값 열의 폭이 이 화면의 목적이다. */
-function compact() { return window.innerWidth < 1280; }
-
-function renderTable() {
-  const rows = filtered();
-  const envs = visibleEnvs();
-  const wide = !compact();
-
-  const cols = $('cols');
-  cols.textContent = '';
-  const addCol = (w) => { const c = el('col'); if (w) c.style.width = w; cols.append(c); };
-  addCol(COLS.check);
-  addCol(wide ? COLS.key : '26%');
-  if (wide) { addCol(COLS.alias); addCol(COLS.type); }
-  for (const _ of envs) addCol(null);
-  addCol(COLS.acts);
-
-  const thead = $('thead');
-  thead.textContent = '';
-  const tr = el('tr');
-  const th = (label, className) => { const n = el('th', className, label); tr.append(n); return n; };
-  const all = el('input');
-  all.type = 'checkbox';
-  all.checked = rows.length > 0 && rows.every((r) => state.checked.has(r.key));
-  all.onclick = (e) => {
-    e.stopPropagation();
-    if (all.checked) for (const r of rows) state.checked.add(r.key);
-    else for (const r of rows) state.checked.delete(r.key);
-    renderTable();
-  };
-  const cth = el('th');
-  cth.style.textAlign = 'center';
-  cth.append(all);
-  tr.append(cth);
-  th('key');
-  if (wide) { th('별칭'); th('종류'); }
-  for (const env of envs) {
-    // th 자체를 flex로 만들면 셀이 표 레이아웃에서 빠진다 — 안쪽 div를 flex로 둔다.
-    const wrap = el('div');
-    wrap.style.cssText = 'display:flex;gap:6px;align-items:center';
-    wrap.append(el('span', null, env));
-    if (env === state.defaultEnv) wrap.append(el('span', 'badge accent', '기본'));
-    th('', 'env-h').append(wrap);
-  }
-  th('작업').style.textAlign = 'right';
-  thead.append(tr);
-
-  const tbody = $('tbody');
-  tbody.textContent = '';
-  if (rows.length === 0) {
-    const blank = el('tr');
-    const td = el('td', 'blank', state.q || state.navFilter.kind !== 'all' ? '조건에 맞는 항목이 없습니다.' : '항목이 없습니다. dkc init으로 저장소를 만드세요.');
-    td.colSpan = envs.length + (wide ? 5 : 3);
-    blank.append(td);
-    tbody.append(blank);
-  } else {
-    for (const item of rows) tbody.append(renderRow(item, envs, wide));
+  for (const group of groups()) {
+    const items = group.keys
+      .map(itemOf)
+      .filter((it) => it && matchesQuery(it, q))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    // 검색 중에는 빈 컬렉션을 접어둔 채 남기지 않는다 — 결과만 보이는 게 낫다.
+    if (q && items.length === 0) continue;
+    shown += items.length;
+    // 검색 중에는 접힘 상태를 무시한다 — 결과가 접힌 컬렉션 안에 있으면 아무것도 안 보인다.
+    const collapsed = state.collapsed.has(group.name) && !q;
+    tree.append(collectionHead(group, items.length, collapsed));
+    if (collapsed) continue;
+    if (items.length === 0) {
+      const hint = el('div', 'empty', group.real ? '비어 있습니다. 키를 끌어다 놓으세요.' : '모든 키가 컬렉션에 들어 있습니다.');
+      hint.style.padding = '10px';
+      tree.append(hint);
+      continue;
+    }
+    for (const item of items) tree.append(keyRow(item));
   }
 
-  renderBulkBar(rows);
-  const foot = $('tfoot');
+  if (tree.childElementCount === 0) {
+    tree.append(el('div', 'empty', q ? `'${q}'에 맞는 항목이 없습니다.` : '항목이 없습니다. dkc init으로 저장소를 만드세요.'));
+  }
+
+  const foot = $('treefoot');
   foot.textContent = '';
-  foot.append(el('span', null, `${rows.length}개 표시 / 전체 ${state.items.length}개`));
-  if (state.checked.size) foot.append(el('span', null, '·'), el('span', null, `선택 ${state.checked.size}개`));
-  foot.append(el('span', null, '·'), el('span', null, `env 열 ${envs.join(', ') || '없음'}`));
-  const legend = el('span', null, '● 마스킹 · 클릭으로 상세');
-  legend.style.marginLeft = 'auto';
-  foot.append(legend);
+  foot.append(el('span', null, q ? `${shown}개 검색됨 / 전체 ${state.items.length}개` : `${state.items.length}개 항목 · 컬렉션 ${state.collections.length}개`));
 }
 
-function renderBulkBar(rows) {
-  const bar = $('bulkbar');
-  bar.textContent = '';
-  if (state.checked.size === 0) { bar.className = ''; return; }
-  bar.className = 'bulkbar';
-  bar.append(icon('check', 14), el('span', null, `${state.checked.size}개 선택됨`));
-  const spacer = el('span', 'spacer');
-  bar.append(spacer);
-  bar.append(btn('.env로 복사', () => copyEnvFile([...state.checked]), 'btn', 'copy'));
-  bar.append(btn('선택 해제', () => { state.checked.clear(); renderTable(); }, 'btn ghost'));
-}
+function collectionHead(group, count, collapsed) {
+  const head = el('div', 'col-head' + (collapsed ? ' collapsed' : ''));
+  head.append(icon('caret', 13));
+  head.firstChild.classList.add('caret');
+  head.append(icon(group.real ? 'folder' : 'link', 13));
+  head.lastChild.style.color = 'var(--faint)';
 
-function renderRow(item, envs, wide) {
-  const tr = el('tr', 'row' + (state.selected === item.key ? ' on' : '') + (state.checked.has(item.key) ? ' checked' : ''));
-  tr.onclick = () => { state.selected = item.key; renderTable(); renderInspector(); };
-
-  const check = el('td');
-  check.style.textAlign = 'center';
-  const box = el('input');
-  box.type = 'checkbox';
-  box.checked = state.checked.has(item.key);
-  box.onclick = (e) => {
-    e.stopPropagation();
-    box.checked ? state.checked.add(item.key) : state.checked.delete(item.key);
-    renderTable();
-  };
-  check.append(box);
-  tr.append(check);
-
-  const keyTd = el('td');
-  const head = el('div', 'keycell');
-  head.append(icon(isSecret(item) ? 'lock' : 'unlock', 13));
-  head.lastChild.style.color = isSecret(item) ? 'var(--warn)' : 'var(--faint)';
-  head.append(el('span', 'keyname', item.key));
-  if (item.declared === 'public' && item.visibility === 'secret') {
-    const b = el('span', 'badge secret', '참조');
-    b.title = '이 항목은 public으로 선언됐지만 secret을 참조해 실효 secret입니다';
-    head.append(b);
-  }
-  const sub = [item.resource_type, item.desc].filter(Boolean).join(' · ');
-  keyTd.append(head, el('div', 'sub', wide ? item.desc || '' : sub));
-  tr.append(keyTd);
-
-  if (wide) {
-    const aliasTd = el('td');
-    const chips = el('div', 'chips');
-    if (item.alias.length === 0) chips.append(el('span', 'sub', '—'));
-    for (const alias of item.alias.slice(0, 2)) chips.append(el('span', 'chip', alias));
-    if (item.alias.length > 2) chips.append(el('span', 'chip', `+${item.alias.length - 2}`));
-    aliasTd.append(chips);
-    tr.append(aliasTd);
-
-    const typeTd = el('td');
-    typeTd.append(item.resource_type ? el('span', 'chip', item.resource_type) : el('span', 'sub', '—'));
-    tr.append(typeTd);
-  }
-
-  for (const env of envs) tr.append(renderValueCell(item, env));
-
-  const actTd = el('td');
-  const acts = el('div', 'rowacts');
-  acts.append(iconBtn('terminal', 'CLI 명령 복사', () => {
-    copyText(`dkc get ${item.key} --env ${state.envFilter === 'all' ? state.defaultEnv : state.envFilter}`, false);
-  }));
-  acts.append(iconBtn('tag', '메타 · 별칭 편집', () => openMetaModal(item)));
-  acts.append(iconBtn('link', '상세 열기', () => { state.selected = item.key; renderTable(); renderInspector(); }, 'hot'));
-  actTd.append(acts);
-  tr.append(actTd);
-  return tr;
-}
-
-function renderValueCell(item, env) {
-  const td = el('td', 'envcell');
-  const value = item.values[env];
-  if (!value) {
-    td.append(el('div', 'val none', '정의 없음'));
-    return td;
-  }
-  const id = `${item.key}::${env}`;
-
-  if (state.editing === id) {
-    const input = el('input', 'inline');
-    // 편집은 항상 템플릿(원본) 기준이다. 치환 결과를 저장하면 참조가 상수로 굳어버린다.
-    input.value = value.template ?? '';
-    input.placeholder = '값 (참조는 {{OTHER_KEY}})';
-    const save = () => putValue(item, env, input.value);
-    input.onclick = (e) => e.stopPropagation();
+  if (state.editing === `col:${group.name}`) {
+    const input = el('input', 'rename');
+    input.value = group.name;
+    // Enter로 저장하면 곧바로 다시 그려지면서 blur가 한 번 더 뜬다. 두 번 저장하면
+    // 두 번째는 "없는 컬렉션"이 되어 엉뚱한 에러가 뜬다.
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const name = input.value.trim();
+      state.editing = null;
+      if (!name || name === group.name) return renderTree();
+      act(() => api('PUT', `/collections/${encodeURIComponent(group.name)}`, { name }), `컬렉션 이름을 ${name}으로 바꿨습니다`);
+    };
     input.onkeydown = (e) => {
       e.stopPropagation();
-      if (e.key === 'Enter') save();
-      if (e.key === 'Escape') { state.editing = null; renderTable(); }
+      if (e.key === 'Enter') commit();
+      if (e.key === 'Escape') { done = true; state.editing = null; renderTree(); }
     };
-    const wrap = el('div', 'valcell');
-    wrap.append(input, iconBtn('check', '저장 (Enter)', save, 'hot'), iconBtn('close', '취소 (Esc)', () => { state.editing = null; renderTable(); }));
-    td.append(wrap);
+    input.onblur = commit;
+    input.onclick = (e) => e.stopPropagation();
+    head.append(input);
     setTimeout(() => { input.focus(); input.select(); }, 0);
-    return td;
+  } else {
+    head.append(el('span', 'name', group.name));
+    head.append(el('span', 'count', String(count)));
+    if (group.real) {
+      const tools = el('div', 'tools');
+      tools.append(iconBtn('edit', '이름 바꾸기', () => { state.editing = `col:${group.name}`; renderTree(); }));
+      tools.append(iconBtn('trash', '컬렉션 삭제 (키는 지워지지 않습니다)', () => {
+        if (!confirm(`컬렉션 '${group.name}'을 지울까요?\n\n안에 있는 키는 지워지지 않고 미분류로 돌아갑니다.`)) return;
+        act(() => api('DELETE', `/collections/${encodeURIComponent(group.name)}`), `컬렉션 '${group.name}'을 지웠습니다`);
+      }, 'warn'));
+      head.append(tools);
+    }
   }
 
-  const wrap = el('div', 'valcell');
-  const revealed = isRevealed(item, env);
-  const line = valueLine(item, env, value, revealed);
-  wrap.append(line);
+  head.onclick = () => {
+    state.collapsed.has(group.name) ? state.collapsed.delete(group.name) : state.collapsed.add(group.name);
+    renderTree();
+  };
 
-  const acts = el('div', 'cellacts');
-  if (isSecret(item) && value.status === 'set') {
-    acts.append(iconBtn(revealed ? 'eyeoff' : 'eye', revealed ? '가리기' : '평문 보기', () => toggleReveal(item, env)));
-  }
-  if (value.status === 'set' && value.resolved !== null) {
-    acts.append(iconBtn('copy', '값 복사 (30초 뒤 클립보드 비움)', () => copyValue(value.resolved), 'hot'));
-  }
-  if (value.status !== 'locked') {
-    acts.append(iconBtn('edit', '편집', () => { state.editing = `${item.key}::${env}`; renderTable(); }));
-  }
-  wrap.append(acts);
-  td.append(wrap);
-  return td;
+  // 드롭 대상: 컬렉션 헤더에 키를 떨어뜨리면 그 컬렉션으로 옮긴다.
+  head.ondragover = (e) => { if (state.drag) { e.preventDefault(); head.classList.add('drop'); } };
+  head.ondragleave = () => head.classList.remove('drop');
+  head.ondrop = (e) => {
+    e.preventDefault();
+    head.classList.remove('drop');
+    const key = state.drag;
+    state.drag = null;
+    if (!key) return;
+    dropInto(group, key);
+  };
+  return head;
 }
 
-/** 값 한 줄. 상태 4가지(set·unset·locked·error)를 한 곳에서 그린다. */
-function valueLine(item, env, value, revealed) {
-  if (value.status === 'unset') return el('div', 'val none', '미설정 (null)');
-  if (value.status === 'locked') {
-    const node = el('div', 'val none', '잠김 (축소 모드)');
-    node.title = '암호문만 읽은 상태입니다. age 개인키를 두고 reload하세요.';
-    return node;
+function dropInto(group, key) {
+  const from = collectionOf(key);
+  if ((group.real ? group.name : null) === from) return;
+  if (group.real) {
+    act(() => api('PUT', `/collections/${encodeURIComponent(group.name)}/keys/${encodeURIComponent(key)}`), `${key}를 '${group.name}'으로 옮겼습니다`);
+  } else {
+    act(() => api('DELETE', `/collections/${encodeURIComponent(from)}/keys/${encodeURIComponent(key)}`), `${key}를 미분류로 옮겼습니다`);
   }
-  if (value.status === 'error') {
-    const node = el('div', 'val bad', `치환 실패 · ${value.error ?? ''}`);
-    node.title = value.error ?? '';
-    return node;
+}
+
+function keyRow(item) {
+  const row = el('div', 'keyrow' + (state.selected === item.key ? ' on' : ''));
+  row.draggable = true;
+  row.ondragstart = (e) => {
+    state.drag = item.key;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.key);
+  };
+  row.ondragend = () => { row.classList.remove('dragging'); state.drag = null; };
+  row.onclick = () => { state.selected = item.key; state.editing = null; renderTree(); renderDetail(); };
+
+  row.append(icon(isSecret(item) ? 'lock' : 'unlock', 13));
+  row.firstChild.style.color = isSecret(item) ? 'var(--warn)' : 'var(--faint)';
+
+  const main = el('div', 'kmain');
+  main.append(el('div', 'kname', item.key));
+  main.append(el('div', 'ksub', item.alias.join(' · ') || '별칭 없음'));
+  row.append(main);
+
+  const dots = el('div', 'envdots');
+  for (const env of state.envs) {
+    const v = item.values[env];
+    const tone = !v ? '' : v.status === 'set' ? ' set' : (v.status === 'unset' ? '' : ' bad');
+    const dot = el('span', 'envdot' + tone, env.slice(0, 4));
+    dot.title = !v ? `${env}: 정의 없음` : `${env}: ${v.status}`;
+    dots.append(dot);
   }
-  if (revealed) return el('div', 'val ' + (isSecret(item) ? 'plain' : ''), value.resolved === '' ? '(빈 문자열)' : value.resolved ?? '');
-  return el('div', 'val masked', maskOf(value.resolved));
+  row.append(dots);
+  return row;
 }
 
-function toggleReveal(item, env) {
-  const id = `${item.key}::${env}`;
-  state.revealed.has(id) ? state.revealed.delete(id) : state.revealed.add(id);
-  renderTable();
-  renderInspector();
-}
-
-/** 값 쓰기의 단일 통로. 낙관적 잠금 version은 서버가 필수로 요구한다(§4.5). */
-function putValue(item, env, value) {
-  return act(
-    () => api('PUT', `/value/${encodeURIComponent(item.key)}`, { env, value, version: item.version }),
-    value === null ? `${item.key}(${env})를 미설정으로 바꿨습니다` : `${item.key}(${env})를 저장했습니다`,
-  );
-}
-
-/* ── 인스펙터: 값·메타·참조·CLI를 모두 표로 고정한다 ─────────────── */
-function renderInspector() {
-  const panel = $('inspector');
-  panel.textContent = '';
+/* ── 우측 상세: 값·메타·별칭·참조·CLI를 모두 표로 고정한다 ────────── */
+function renderDetail() {
+  const right = $('right');
+  right.textContent = '';
   const item = state.selected ? itemOf(state.selected) : null;
 
   if (!item) {
     const blank = el('div', 'blank');
-    blank.append(icon('layers', 22));
-    blank.append(el('div', null, '행을 선택하면 값·참조·CLI 사용법이 여기에 표로 나옵니다.'));
-    panel.append(blank);
+    const box = el('div');
+    box.append(icon('folder', 26));
+    box.append(el('div', null, '왼쪽에서 키를 고르면 값·메타·참조·CLI 사용법이 여기에 표로 나옵니다.'));
+    box.append(el('div', 'note', '표의 값을 클릭하면 그 자리에서 편집됩니다. 키를 끌어 컬렉션에 넣을 수 있습니다.'));
+    blank.append(box);
+    right.append(blank);
     return;
   }
 
-  const head = el('div', 'insp-head');
+  const wrap = el('div', 'detail');
+  const head = el('div', 'detail-head');
   const left = el('div');
   left.style.minWidth = '0';
-  const badges = el('div');
-  badges.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap';
+  const badges = el('div', 'badges');
   badges.append(el('span', 'badge ' + (isSecret(item) ? 'secret' : 'public'), item.visibility));
-  if (item.declared !== item.visibility) badges.append(el('span', 'badge', `선언 ${item.declared}`));
-  if (item.resource_type) badges.append(el('span', 'badge', item.resource_type));
-  left.append(badges, el('h2', null, item.key));
+  if (item.declared !== item.visibility) {
+    const b = el('span', 'badge', `선언 ${item.declared}`);
+    b.title = '참조를 통해 secret이 섞여 실효 민감도가 올라갔습니다';
+    badges.append(b);
+  }
+  if (item.locked) badges.append(el('span', 'badge err', '값 잠김'));
+  left.append(badges, el('h1', null, item.key));
   head.append(left);
-  const close = iconBtn('close', '닫기', () => { state.selected = null; renderTable(); renderInspector(); });
-  close.style.marginLeft = 'auto';
-  head.append(close);
-  panel.append(head);
 
-  panel.append(valueSection(item));
+  const acts = el('div', 'rowacts');
+  acts.style.marginLeft = 'auto';
+  acts.append(iconBtn('copy', 'key 이름 복사', () => copyText(item.key, false)));
+  acts.append(iconBtn('close', '닫기', () => { state.selected = null; renderTree(); renderDetail(); }));
+  head.append(acts);
+  wrap.append(head);
+
+  const grid = el('div', 'detail-grid');
+  const colA = el('div', 'col');
+  const colB = el('div', 'col');
+  colA.append(valueSection(item));
   const refs = refSection(item);
-  if (refs) panel.append(refs);
-  panel.append(metaSection(item));
-  panel.append(aliasSection(item));
-  panel.append(cliSection(item));
+  if (refs) colA.append(refs);
+  colA.append(cliSection(item));
+  colB.append(metaSection(item));
+  colB.append(aliasSection(item));
+  grid.append(colA, colB);
+  wrap.append(grid);
+  right.append(wrap);
+}
 
-  const actions = el('div', 'section');
-  const row = el('div');
-  row.style.cssText = 'display:flex;gap:6px';
-  row.append(btn('메타 편집', () => openMetaModal(item), 'btn', 'edit'));
-  row.append(btn('값 편집', () => {
-    const env = state.envFilter === 'all' ? state.defaultEnv : state.envFilter;
-    state.editing = `${item.key}::${item.values[env] ? env : Object.keys(item.values).find((e) => item.values[e]) ?? env}`;
-    renderTable();
-  }, 'btn', 'terminal'));
-  row.append(btn('.env 복사', () => copyEnvFile([item.key]), 'btn', 'copy'));
-  actions.append(row);
-  panel.append(actions);
+function section(title, action) {
+  const box = el('div', 'section');
+  const head = el('div', 'sechead');
+  head.append(el('span', null, title));
+  if (action) head.append(action);
+  box.append(head);
+  return box;
 }
 
 function kvTable(rows, headers, widths) {
@@ -1070,8 +804,7 @@ function kvTable(rows, headers, widths) {
   for (const row of rows) {
     const tr = el('tr');
     row.forEach((cell, i) => {
-      const isHead = !headers && i === 0;
-      const td = el(isHead ? 'th' : 'td');
+      const td = el(!headers && i === 0 ? 'th' : 'td');
       if (typeof cell === 'string') td.textContent = cell;
       else if (cell) td.append(cell);
       tr.append(td);
@@ -1082,13 +815,69 @@ function kvTable(rows, headers, widths) {
   return table;
 }
 
-function section(title, action) {
-  const box = el('div', 'section');
-  const head = el('div', 'sechead');
-  head.append(el('span', null, title));
-  if (action) head.append(action);
-  box.append(head);
-  return box;
+/** 드롭다운 하나를 만든다. 컬렉션·종류가 같은 모양을 쓴다. */
+function selectBox(options, value, onChange) {
+  const pick = el('select', 'pick');
+  for (const opt of options) {
+    const node = el('option', null, opt.label);
+    node.value = opt.value;
+    pick.append(node);
+  }
+  pick.value = value;
+  pick.onchange = () => onChange(pick.value);
+  return pick;
+}
+
+/**
+ * 종류(resource_type) 선택지.
+ *
+ * 자유 입력을 두지 않는 이유는 같은 개념이 여러 철자로 갈라지기 때문이다.
+ * 다만 파일에 이미 들어 있는 목록 밖의 값은 지우지 않고 선택지에 남긴다 —
+ * 화면을 열었다는 이유로 저장소의 값이 조용히 바뀌면 안 된다.
+ */
+function typeOptions(current) {
+  const options = [{ value: '', label: '— 지정 안 함' }, ...state.resourceTypes.map((t) => ({ value: t.value, label: `${t.label} (${t.value})` }))];
+  if (current && !state.resourceTypes.some((t) => t.value === current)) {
+    options.push({ value: current, label: `${current} (등록 외 · 파일에 있던 값)` });
+  }
+  return options;
+}
+
+/**
+ * 클릭하면 그 자리에서 편집되는 셀.
+ *
+ * 편집 버튼을 따로 두지 않는 이유: 이 화면에서 하는 일의 대부분이 "보다가 고치는 것"인데,
+ * 버튼을 찾는 단계가 그 사이에 끼면 매번 한 번씩 더 멈추게 된다.
+ */
+function editable(display, opts) {
+  const id = opts.id;
+  if (state.editing === id) {
+    const input = el('input', 'inline');
+    input.value = opts.value ?? '';
+    if (opts.placeholder) input.placeholder = opts.placeholder;
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const next = input.value;
+      state.editing = null;
+      if (next === (opts.value ?? '')) return renderDetail();
+      opts.onSave(next);
+    };
+    input.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') commit();
+      if (e.key === 'Escape') { done = true; state.editing = null; renderDetail(); }
+    };
+    input.onblur = commit;
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+    return input;
+  }
+  const node = el('div', 'edit-target' + (opts.locked ? ' locked' : ''));
+  node.append(display);
+  node.title = opts.locked ? (opts.lockedReason ?? '') : '클릭해서 편집';
+  if (!opts.locked) node.onclick = () => { state.editing = id; renderDetail(); };
+  return node;
 }
 
 function valueSection(item) {
@@ -1100,36 +889,56 @@ function valueSection(item) {
           const id = `${item.key}::${env}`;
           allShown ? state.revealed.delete(id) : state.revealed.add(id);
         }
-        renderTable();
-        renderInspector();
+        renderDetail();
       }, 'btn ghost')
     : null;
-  const box = section('환경별 값', toggle);
+  const box = section('환경별 값 · 클릭해서 편집', toggle);
 
-  const STATUS_TONE = { set: 'ok', unset: 'unset', locked: 'err', error: 'err' };
+  const TONE = { set: 'ok', unset: 'unset', locked: 'err', error: 'err' };
   const rows = [];
   for (const env of state.envs) {
     const value = item.values[env];
     const envCell = el('span', 'badge ' + (env === 'prod' ? 'secret' : 'public'), env);
+
+    // env가 아예 정의되지 않은 경우에도 값을 넣을 수 있다 — 넣는 순간 그 env가 생긴다.
     if (!value) {
-      rows.push([envCell, el('span', 'badge unset', '정의 없음'), el('span', 'val none', '—'), el('span')]);
+      rows.push([
+        envCell,
+        el('span', 'badge unset', '정의 없음'),
+        editable(el('span', 'val none', '값을 넣으면 이 env가 생깁니다'), {
+          id: `val:${item.key}::${env}`, value: '',
+          placeholder: '값 · 참조는 {{OTHER_KEY}}',
+          onSave: (v) => putValue(item, env, v),
+        }),
+        el('span'),
+      ]);
       continue;
     }
-    const revealed = isRevealed(item, env);
-    const valNode = valueLine(item, env, value, revealed);
-    if (value.status === 'set' && revealed && anySecret) valNode.style.color = 'var(--ok)';
-    const statusNode = el('span', 'badge ' + STATUS_TONE[value.status], value.status);
 
-    const acts = el('div');
-    acts.style.cssText = 'display:flex;gap:1px;justify-content:flex-end';
+    const revealed = isRevealed(item, env);
+    const display = valueDisplay(item, value, revealed);
+    if (value.status === 'set' && revealed && anySecret) display.style.color = 'var(--ok)';
+
+    const cell = editable(display, {
+      id: `val:${item.key}::${env}`,
+      value: value.template ?? '',
+      placeholder: '값 · 참조는 {{OTHER_KEY}}',
+      // 편집은 항상 템플릿(원본) 기준이다. 잠긴 값은 원본을 모르므로 손대지 못하게 막는다.
+      locked: value.status === 'locked',
+      lockedReason: '축소 모드입니다 — 원본을 모르는 채로 덮어쓰면 값이 사라집니다',
+      onSave: (v) => putValue(item, env, v),
+    });
+
+    const acts = el('div', 'rowacts');
     if (anySecret && value.status === 'set') {
-      acts.append(iconBtn(revealed ? 'eyeoff' : 'eye', revealed ? '가리기' : '평문 보기', () => toggleReveal(item, env)));
+      acts.append(iconBtn(revealed ? 'eyeoff' : 'eye', revealed ? '가리기' : '평문 보기', () => {
+        const id = `${item.key}::${env}`;
+        state.revealed.has(id) ? state.revealed.delete(id) : state.revealed.add(id);
+        renderDetail();
+      }));
     }
     if (value.status === 'set' && value.resolved !== null) {
-      acts.append(iconBtn('copy', '값 복사', () => copyValue(value.resolved), 'hot'));
-    }
-    if (value.status !== 'locked') {
-      acts.append(iconBtn('edit', '편집', () => { state.editing = `${item.key}::${env}`; renderTable(); }));
+      acts.append(iconBtn('copy', '값 복사 (30초 뒤 클립보드 비움)', () => copyValue(value.resolved), 'hot'));
     }
     if (value.status === 'set') {
       acts.append(iconBtn('trash', '미설정(null)으로 되돌리기', () => {
@@ -1137,11 +946,10 @@ function valueSection(item) {
         putValue(item, env, null);
       }, 'warn'));
     }
-    rows.push([envCell, statusNode, valNode, acts]);
+    rows.push([envCell, el('span', 'badge ' + TONE[value.status], value.status), cell, acts]);
   }
 
-  box.append(kvTable(rows, ['env', '상태', '값', ''], ['54px', '52px', null, '74px']));
-
+  box.append(kvTable(rows, ['env', '상태', '값', ''], ['74px', '78px', null, '84px']));
   for (const env of state.envs) {
     const v = item.values[env];
     if (v && v.status === 'error') box.append(el('div', 'err', `${env}: ${v.error}`));
@@ -1149,78 +957,126 @@ function valueSection(item) {
   return box;
 }
 
+function valueDisplay(item, value, revealed) {
+  if (value.status === 'unset') return el('span', 'val none', '미설정 (null)');
+  if (value.status === 'locked') return el('span', 'val none', '잠김 (축소 모드)');
+  if (value.status === 'error') return el('span', 'val bad', `치환 실패 · ${value.error ?? ''}`);
+  if (revealed) return el('span', 'val ' + (isSecret(item) ? 'plain' : ''), value.resolved === '' ? '(빈 문자열)' : value.resolved ?? '');
+  return el('span', 'val masked', maskOf(value.resolved));
+}
+
 function refSection(item) {
   const rows = [];
   for (const env of state.envs) {
     const value = item.values[env];
-    if (!value || !value.refs || value.refs.length === 0 || !value.template) continue;
-    // 템플릿 마스킹 기준은 실효 visibility가 아니라 declared다. public 항목의 템플릿에는
-    // 참조 '이름'만 들어 있고 비밀값은 없다 — 가리면 정보만 잃는다(§4.4 구현 메모).
+    if (!value || value.refs.length === 0 || !value.template) continue;
+    // 템플릿 마스킹 기준은 실효 visibility가 아니라 declared다. public으로 선언된 항목의
+    // 템플릿에는 참조 '이름'만 들어 있고 비밀값은 없다 — 가리면 정보만 잃는다.
     const hide = item.declared === 'secret' && !isRevealed(item, env);
-    const tmpl = el('span', null, hide ? maskOf(value.template) : value.template);
     const links = el('div');
-    links.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap';
+    links.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap';
     for (const ref of value.refs) {
-      const chip = el('button', 'chip on', ref);
+      const chip = el('button', 'badge accent', ref);
       chip.type = 'button';
       chip.style.cursor = 'pointer';
-      chip.onclick = () => { state.selected = ref; renderTable(); renderInspector(); };
+      chip.onclick = () => { state.selected = ref; state.editing = null; renderTree(); renderDetail(); };
       links.append(chip);
     }
-    rows.push([el('span', 'badge', env), tmpl, links]);
+    rows.push([el('span', 'badge', env), el('span', 'val', hide ? maskOf(value.template) : value.template), links]);
   }
   if (rows.length === 0) return null;
   const box = section('참조 · 원본 템플릿');
-  box.append(kvTable(rows, ['env', '템플릿', '참조 key'], ['44px', null, '104px']));
+  box.append(kvTable(rows, ['env', '템플릿', '참조 key'], ['74px', null, '34%']));
+  box.append(el('div', 'note', '편집은 항상 템플릿 기준입니다. 치환 결과를 저장하면 참조가 상수로 굳습니다.'));
   return box;
 }
 
 function metaSection(item) {
-  const link = item.ref ? el('a', null, item.ref) : null;
-  if (link) { link.href = item.ref; link.target = '_blank'; link.rel = 'noreferrer noopener'; }
+  const box = section('메타데이터 · 클릭해서 편집');
+  const meta = (label, field, value, placeholder) =>
+    [label, editable(el('span', 'val' + (value ? '' : ' none'), value || '—'), {
+      id: `meta:${item.key}:${field}`,
+      value,
+      placeholder,
+      onSave: (v) => patchMeta(item, { [field]: v.trim() || null }),
+    })];
+
+  const linkCell = () => {
+    if (!item.ref) return el('span', 'val none', '—');
+    const box2 = el('span');
+    const a = el('a', null, item.ref);
+    a.href = item.ref;
+    a.target = '_blank';
+    a.rel = 'noreferrer noopener';
+    a.onclick = (e) => e.stopPropagation();
+    box2.append(a);
+    return box2;
+  };
+
+  const collectionPick = selectBox(
+    [{ value: '', label: '미분류' }, ...state.collections.map((c) => ({ value: c.name, label: c.name }))],
+    collectionOf(item.key) ?? '',
+    (name) => {
+      const from = collectionOf(item.key);
+      if (name) act(() => api('PUT', `/collections/${encodeURIComponent(name)}/keys/${encodeURIComponent(item.key)}`), `'${name}'으로 옮겼습니다`);
+      else if (from) act(() => api('DELETE', `/collections/${encodeURIComponent(from)}/keys/${encodeURIComponent(item.key)}`), '미분류로 옮겼습니다');
+    },
+  );
+
+  const typePick = selectBox(typeOptions(item.resource_type), item.resource_type ?? '', (value) =>
+    patchMeta(item, { resource_type: value || null }));
+
   const rows = [
-    ['key', el('span', null, item.key)],
+    ['key', el('span', 'val', item.key)],
+    ['컬렉션', collectionPick],
+    ['종류', typePick],
+    meta('설명', 'desc', item.desc, '이 값이 무엇인지 한 줄로'),
+    ['참고', editable(linkCell(), {
+      id: `meta:${item.key}:ref`, value: item.ref, placeholder: 'https://…',
+      onSave: (v) => patchMeta(item, { ref: v.trim() || null }),
+    })],
     ['선언', el('span', 'badge ' + (item.declared === 'secret' ? 'secret' : 'public'), `${item.declared}.yaml`)],
-    ['실효', el('span', 'badge ' + (isSecret(item) ? 'secret' : 'public'), item.visibility)],
-    ['종류', item.resource_type || '—'],
-    ['설명', item.desc || '—'],
-    ['참고', link ?? '—'],
-    ['env', Object.keys(item.values).filter((e) => item.values[e]).join(', ') || '—'],
-    ['version', item.version],
+    ['version', el('span', 'val', item.version)],
   ];
-  const box = section('메타데이터', btn('편집', () => openMetaModal(item), 'btn ghost'));
-  const table = kvTable(rows);
-  table.querySelectorAll('td').forEach((td) => td.classList.add('wrapv'));
-  box.append(table);
+  box.append(kvTable(rows, null, ['104px', null]));
   return box;
 }
 
 function aliasSection(item) {
   const add = btn('추가', () => {
     const alias = prompt(`${item.key}에 추가할 별칭`);
-    if (alias) act(() => api('POST', `/alias/${encodeURIComponent(item.key)}`, { alias }), '별칭을 추가했습니다');
+    if (alias && alias.trim()) act(() => api('POST', `/alias/${encodeURIComponent(item.key)}`, { alias: alias.trim() }), '별칭을 추가했습니다');
   }, 'btn ghost', 'plus');
-  const box = section(`별칭 (${item.alias.length})`, add);
+  const box = section(`별칭 (${item.alias.length}) · 에이전트가 이 말로 key를 찾는다`, add);
+
   if (item.alias.length === 0) {
-    box.append(el('div', 'note', '별칭이 없습니다. 에이전트는 별칭으로 key를 찾습니다(§4.3).'));
+    box.append(kvTable([[el('span', 'val none', '별칭이 없습니다'), el('span')]], ['별칭', ''], [null, '32px']));
     return box;
   }
-  const rows = item.alias.map((alias) => {
-    const del = iconBtn('trash', '별칭 삭제', () => act(
+  const rows = item.alias.map((alias, i) => {
+    const cell = editable(el('span', 'val', alias), {
+      id: `alias:${item.key}:${i}`,
+      value: alias,
+      onSave: (v) => {
+        const next = [...item.alias];
+        if (v.trim()) next[i] = v.trim();
+        else next.splice(i, 1);
+        patchMeta(item, { alias: next });
+      },
+    });
+    const del = el('div', 'rowacts');
+    del.append(iconBtn('trash', '별칭 삭제', () => act(
       () => api('DELETE', `/alias/${encodeURIComponent(item.key)}/${encodeURIComponent(alias)}`),
       '별칭을 삭제했습니다',
-    ), 'warn');
-    const wrap = el('div');
-    wrap.style.cssText = 'display:flex;justify-content:flex-end';
-    wrap.append(del);
-    return [el('span', null, alias), wrap];
+    ), 'warn'));
+    return [cell, del];
   });
-  box.append(kvTable(rows, ['별칭', ''], [null, '32px']));
+  box.append(kvTable(rows, ['별칭', ''], [null, '40px']));
   return box;
 }
 
 function cliSection(item) {
-  const env = state.envFilter === 'all' ? state.defaultEnv : state.envFilter;
+  const env = state.defaultEnv;
   const commands = [
     ['값 조회', `dkc get ${item.key} --env ${env}`],
     ['템플릿 원본', `dkc get ${item.key} --env ${env} --raw`],
@@ -1232,16 +1088,31 @@ function cliSection(item) {
     const line = el('div', 'cmd');
     line.append(el('code', null, cmd));
     line.append(iconBtn('copy', '명령 복사', () => copyText(cmd, false), 'hot'));
-    return [el('span', null, label), line];
+    return [label, line];
   });
-  const table = kvTable(rows, ['용도', '명령'], ['74px', null]);
-  box.append(table);
-  box.append(el('div', 'note', '값을 에이전트 컨텍스트에 남기지 않으려면 get 대신 exec를 쓰세요(§4.3).'));
+  box.append(kvTable(rows, ['용도', '명령'], ['118px', null]));
+  box.append(el('div', 'note', '값을 에이전트 컨텍스트에 남기지 않으려면 get 대신 exec를 쓰세요 (스펙 §4.3).'));
   return box;
 }
 
+/* ── 쓰기 ───────────────────────────────────────────────────── */
+function putValue(item, env, value) {
+  return act(
+    () => api('PUT', `/value/${encodeURIComponent(item.key)}`, { env, value, version: item.version }),
+    value === null ? `${item.key}(${env})를 미설정으로 바꿨습니다` : `${item.key}(${env})를 저장했습니다`,
+  );
+}
+
+/** 메타 편집은 alias 경로 하나로 모인다. key와 value는 이 경로로 바뀌지 않는다 (스펙 §4.5). */
+function patchMeta(item, fields) {
+  return act(
+    () => api('PUT', `/alias/${encodeURIComponent(item.key)}`, { version: item.version, ...fields }),
+    `${item.key}를 저장했습니다`,
+  );
+}
+
 /* ── 모달 ───────────────────────────────────────────────────── */
-function openModal(title, buildBody, onSubmit, submitLabel = '저장') {
+function openModal(title, buildBody, onSubmit, submitLabel) {
   const root = $('modal-root');
   root.textContent = '';
   const backdrop = el('div', 'backdrop');
@@ -1252,17 +1123,22 @@ function openModal(title, buildBody, onSubmit, submitLabel = '저장') {
   x.style.marginLeft = 'auto';
   header.append(x);
   const body = el('div', 'body');
-  const foot = el('footer');
-  const form = el('form');
-  form.onsubmit = (e) => { e.preventDefault(); onSubmit(); };
   buildBody(body);
-  foot.append(btn('취소', () => closeModal(), 'btn'));
-  const submit = el('button', 'btn primary');
-  submit.type = 'submit';
-  submit.textContent = submitLabel;
-  foot.append(submit);
-  form.append(body, foot);
-  modal.append(header, form);
+
+  if (onSubmit) {
+    const form = el('form');
+    form.onsubmit = (e) => { e.preventDefault(); onSubmit(); };
+    const foot = el('footer');
+    foot.append(btn('취소', () => closeModal(), 'btn'));
+    const submit = el('button', 'btn primary');
+    submit.type = 'submit';
+    submit.textContent = submitLabel ?? '저장';
+    foot.append(submit);
+    form.append(body, foot);
+    modal.append(header, form);
+  } else {
+    modal.append(header, body);
+  }
   backdrop.append(modal);
   backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
   root.append(backdrop);
@@ -1282,15 +1158,25 @@ function field(label, hint) {
   return { box, input };
 }
 
-function openNewModal() {
-  const key = field('key', '대문자·숫자·밑줄만. 예: ORDER_SERVICE_HOST');
-  const type = field('종류 (resource_type)', '선택. 예: database, api-key');
+function openNewCollection() {
+  const name = field('컬렉션 이름', '키를 묶는 폴더입니다. 값은 들어가지 않습니다');
+  openModal('새 컬렉션', (body) => body.append(name.box), () => {
+    const value = name.input.value.trim();
+    if (!value) return toast('⚠️ 이름을 입력하세요');
+    act(() => api('POST', '/collections', { name: value }), `컬렉션 '${value}'을 만들었습니다`);
+  }, '만들기');
+}
+
+function openNewItem() {
+  const key = field('key', '영문/숫자/밑줄. 숫자로 시작할 수 없습니다');
+  let type = '';
   const alias = field('별칭', '쉼표로 구분. 에이전트가 이 말로 key를 찾습니다');
   const desc = field('설명', '선택');
   const refUrl = field('참고 링크', '선택. 콘솔·문서 URL');
   const envs = state.envs.length ? state.envs : ['prod', 'dev'];
   const valueInputs = new Map();
   let visibility = 'public';
+  let collection = state.selected ? collectionOf(state.selected) ?? '' : '';
 
   openModal('새 항목', (body) => {
     body.append(key.box);
@@ -1317,27 +1203,40 @@ function openNewModal() {
     make('public', 'public.yaml', '평문 저장 · 호스트, 포트, 사용자명');
     make('secret', 'secret.yaml', 'sops+age 암호화 · 비밀번호, API 키');
     vis.append(radios);
-    body.append(vis, type.box, alias.box, desc.box, refUrl.box);
+    body.append(vis);
+
+    const colBox = el('div', 'field');
+    colBox.append(el('label', null, '컬렉션'));
+    const pick = el('select', 'pick');
+    const none = el('option', null, '미분류');
+    none.value = '';
+    pick.append(none);
+    for (const c of state.collections) {
+      const opt = el('option', null, c.name);
+      opt.value = c.name;
+      pick.append(opt);
+    }
+    pick.value = collection;
+    pick.onchange = () => { collection = pick.value; };
+    colBox.append(pick);
+
+    const typeBox = el('div', 'field');
+    typeBox.append(el('label', null, '종류'));
+    typeBox.append(selectBox(typeOptions(''), '', (v) => { type = v; }));
+    typeBox.append(el('div', 'hint', '등록된 카테고리 중에서 고릅니다. 같은 개념이 여러 철자로 갈라지지 않게 합니다'));
+    body.append(colBox, typeBox, alias.box, desc.box, refUrl.box);
 
     const valueBox = el('div', 'field');
     valueBox.append(el('label', null, '초기 값 (비우면 미설정)'));
-    const table = el('table', 'kv');
-    const tbody = el('tbody');
-    for (const env of envs) {
-      const tr = el('tr');
-      tr.append(el('th', null, env));
-      const td = el('td');
+    const rows = envs.map((env) => {
       const input = el('input');
       input.type = 'text';
       input.placeholder = '값 · 참조는 {{OTHER_KEY}}';
-      input.style.cssText = 'width:100%;background:var(--bg);border:1px solid var(--line-2);border-radius:4px;padding:4px 6px;font:400 11.5px/1.5 var(--mono);color:var(--text)';
+      input.style.cssText = 'width:100%;background:var(--bg);border:1px solid var(--line-2);border-radius:4px;padding:4px 6px;font:400 12px/1.5 var(--mono);color:var(--text)';
       valueInputs.set(env, input);
-      td.append(input);
-      tr.append(td);
-      tbody.append(tr);
-    }
-    table.append(tbody);
-    valueBox.append(table);
+      return [env, input];
+    });
+    valueBox.append(kvTable(rows, null, ['72px', null]));
     body.append(valueBox);
   }, () => {
     const name = key.input.value.trim();
@@ -1347,7 +1246,7 @@ function openNewModal() {
       await api('POST', '/items', {
         key: name,
         visibility,
-        resource_type: type.input.value.trim() || null,
+        resource_type: type || null,
         alias: alias.input.value.split(',').map((a) => a.trim()).filter(Boolean),
         desc: desc.input.value.trim() || null,
         ref: refUrl.input.value.trim() || null,
@@ -1356,34 +1255,67 @@ function openNewModal() {
       // 매번 version이 바뀌므로 직전 응답의 version을 이어 쓴다.
       let version = (await api('GET', `/alias/${encodeURIComponent(name)}`)).version;
       for (const [env, input] of filled) {
-        const res = await api('PUT', `/value/${encodeURIComponent(name)}`, { env, value: input.value, version });
-        version = res.version;
+        version = (await api('PUT', `/value/${encodeURIComponent(name)}`, { env, value: input.value, version })).version;
       }
+      if (collection) await api('PUT', `/collections/${encodeURIComponent(collection)}/keys/${encodeURIComponent(name)}`);
     }, `${name}를 만들었습니다` + (filled.length ? ` · 값 ${filled.length}개를 채웠습니다` : ''), () => { state.selected = name; });
   }, '만들기');
 }
 
-function openMetaModal(item) {
-  const type = field('종류 (resource_type)');
-  const desc = field('설명');
-  const refUrl = field('참고 링크');
-  const alias = field('별칭', '쉼표로 구분');
-  type.input.value = item.resource_type ?? '';
-  desc.input.value = item.desc ?? '';
-  refUrl.input.value = item.ref ?? '';
-  alias.input.value = item.alias.join(', ');
+/** 사용법·구조를 화면 안에서 본다. 이 파일 하나로 끝나게 두는 게 목적이라 밖으로 나가지 않는다. */
+function openReadme() {
+  openModal('Config Provider — 사용법과 구조', (body) => {
+    const doc = el('div', 'doc');
+    const h = (t) => doc.append(el('h3', null, t));
+    const p = (t) => doc.append(el('p', null, t));
 
-  openModal(`${item.key} · 메타 편집`, (body) => {
-    body.append(el('div', 'note', 'key와 값은 이 경로로 바꿀 수 없습니다. 값은 표에서 직접 편집하세요(스펙 §4.5).'));
-    body.append(type.box, desc.box, refUrl.box, alias.box);
-  }, () => {
-    act(() => api('PUT', `/alias/${encodeURIComponent(item.key)}`, {
-      resource_type: type.input.value.trim() || null,
-      desc: desc.input.value.trim() || null,
-      ref: refUrl.input.value.trim() || null,
-      alias: alias.input.value.split(',').map((a) => a.trim()).filter(Boolean),
-      version: item.version,
-    }), `${item.key}의 메타를 저장했습니다`);
+    h('무엇을 하는 도구인가');
+    p('설정값과 비밀값을 한 곳에 모아두고, 본인은 여기서 원본 평문을 바로 확인하되 AI 에이전트에게는 필요한 key만 정책으로 열어주는 로컬 서비스입니다. 값은 sops+age로 암호화되어 파일에 저장되고, 복호화는 데몬 안에서만 일어납니다.');
+
+    h('화면 사용법');
+    doc.append(kvTable([
+      ['왼쪽 검색', 'key · 별칭 · 설명을 한 번에 찾습니다. `/` 키로 바로 이동합니다'],
+      ['컬렉션', '키를 묶는 폴더입니다. 헤더를 눌러 접고, 키를 끌어다 놓아 옮깁니다'],
+      ['컬렉션 삭제', '컬렉션만 사라지고 키는 미분류로 돌아갑니다'],
+      ['오른쪽 표', '값·종류·설명·참고·별칭을 클릭하면 그 자리에서 편집됩니다 (Enter 저장 · Esc 취소)'],
+      ['마스킹', 'secret은 기본 마스킹입니다. 눈 아이콘으로 즉시 풀립니다 — 재인증은 없습니다'],
+      ['전체 보기', '15초 뒤 자동으로 다시 가립니다. 항목별 토글은 끌 때까지 유지됩니다'],
+      ['복사', '30초 뒤 클립보드를 자동으로 비웁니다'],
+      ['.env 복사', '보이는 항목을 KEY=값 형식으로 클립보드에 담습니다. 파일로 내려받지 않습니다'],
+    ], ['조작', '동작'], ['110px', null]));
+
+    h('구조');
+    doc.append(el('pre', null,
+      'dkc CLI ─┐\n' +
+      'MCP 어댑터 ├─▶ UDS 데몬 (단일 API·정책 판정) ─▶ 메모리 캐시 ─▶ 저장소\n' +
+      '이 UI ───┘        127.0.0.1 프록시                          public.yaml\n' +
+      '                                                            secret.yaml (sops+age)\n' +
+      '                                                            collections.yaml'));
+    doc.append(kvTable([
+      ['데몬', '조회·편집의 유일한 경로. 정책 판정이 여기 한 곳에 모여 있습니다'],
+      ['캐시', '복호화된 설정의 단일 사본. reload는 원자적이라 실패해도 이전 상태가 남습니다'],
+      ['public.yaml', '평문 설정값. 그대로 git에 커밋합니다'],
+      ['secret.yaml', 'value 필드만 sops+age로 암호화. key·별칭·설명은 평문이라 검색이 됩니다'],
+      ['collections.yaml', '컬렉션. key 이름만 들어 있어 값이 없고, 축소 모드에서도 편집됩니다'],
+      ['이 UI', '127.0.0.1에만 바인딩됩니다. 외부로 여는 옵션은 일부러 없습니다'],
+    ], ['구성요소', '역할'], ['130px', null]));
+
+    h('안전 규칙');
+    doc.append(kvTable([
+      ['에이전트', '기본 deny. policy.yaml에 적힌 key만 조회할 수 있습니다'],
+      ['값 편집', '소유자(UI/CLI) 전용입니다. 에이전트에게는 열리지 않습니다'],
+      ['낙관적 잠금', '조회 때 받은 version으로 저장합니다. 남이 먼저 고쳤으면 저장이 거절됩니다'],
+      ['축소 모드', 'age 개인키가 없으면 값은 잠기고 메타데이터·별칭 검색만 동작합니다'],
+      ['평문 흔적', '브라우저 저장소·캐시·서버 로그 어디에도 값을 남기지 않습니다'],
+    ], ['항목', '규칙'], ['110px', null]));
+
+    h('CLI');
+    doc.append(el('pre', null,
+      'dkc resolve "입고지시"          # 별칭으로 key 찾기 (값 없이)\n' +
+      'dkc get KEY --env prod          # 값 조회\n' +
+      'dkc exec --with KEY -- <명령>    # 값을 env로 주입해 실행 (셸에 값이 안 남는다)\n' +
+      'dkc status | dkc doctor         # 상태 · 환경 진단'));
+    body.append(doc);
   });
 }
 
@@ -1394,15 +1326,16 @@ function maskOf(value) {
 
 /**
  * .env 형식으로 클립보드에 복사한다. **파일로 내려받지 않는다** — 다운로드는
- * 평문을 디스크에 남기고, 그 순간 이 툴의 저장 경계가 무의미해진다(§4.4).
+ * 평문을 디스크에 남기고, 그 순간 이 툴의 저장 경계가 무의미해진다 (스펙 §4.4).
  */
-function copyEnvFile(keys) {
-  const env = state.envFilter === 'all' ? state.defaultEnv : state.envFilter;
+function copyEnvFile() {
+  const env = state.defaultEnv;
+  const q = state.q.trim();
+  const keys = state.items.filter((i) => matchesQuery(i, q)).map((i) => i.key);
   const lines = [];
   let skipped = 0;
   for (const key of keys) {
-    const item = itemOf(key);
-    const value = item?.values[env];
+    const value = itemOf(key)?.values[env];
     if (!value || value.status !== 'set' || value.resolved === null) { skipped++; continue; }
     lines.push(`${key}=${/[\s"'#$]/.test(value.resolved) ? JSON.stringify(value.resolved) : value.resolved}`);
   }
@@ -1412,7 +1345,7 @@ function copyEnvFile(keys) {
   copyValue(lines.join('\n'), `${lines.length}개를 .env 형식으로 복사했습니다` + (skipped ? ` (미설정 ${skipped}개 제외)` : ''));
 }
 
-/** 복사 후 30초 뒤 클립보드를 비운다 — 다른 앱이 나중에 붙여넣는 사고를 줄인다(§4.4). */
+/** 복사 후 30초 뒤 클립보드를 비운다 — 다른 앱이 나중에 붙여넣는 사고를 줄인다 (스펙 §4.4). */
 function copyValue(text, message) {
   copyText(text, true, message ?? '복사했습니다 · 30초 뒤 클립보드를 비웁니다');
 }
@@ -1448,7 +1381,9 @@ async function act(fn, message, after) {
     if (after) { after(); renderAll(); }
     toast(message);
   } catch (err) {
+    state.editing = null;
     toast('⚠️ ' + err.message);
+    renderAll();
   }
 }
 
@@ -1476,34 +1411,30 @@ function toggleRevealAll() {
       renderAll();
       return;
     }
-    renderFilters();
+    renderTop();
   }, 1000);
   renderAll();
 }
 
 /* ── 이벤트 배선 ────────────────────────────────────────────── */
-$('logo').append(icon('send', 16));
+$('logo').append(icon('send', 15));
 $('qico').append(icon('search', 14));
-$('q').addEventListener('input', (e) => { state.q = e.target.value; renderTable(); });
-$('sort').addEventListener('change', (e) => { state.sort = e.target.value; renderTable(); });
+$('q-clear').append(iconBtn('close', '검색 지우기', () => { state.q = ''; $('q').value = ''; renderTree(); }));
+$('q').addEventListener('input', (e) => { state.q = e.target.value; renderTree(); });
 $('reload').onclick = () => act(() => api('POST', '/reload'), '파일을 다시 읽었습니다');
-$('new').onclick = () => openNewModal();
+$('new').onclick = () => openNewItem();
+$('newcol').onclick = () => openNewCollection();
+$('readme').onclick = () => openReadme();
 $('revealall').onclick = () => toggleRevealAll();
-$('envcopy').onclick = () => copyEnvFile(filtered().map((i) => i.key));
-
-let resizeTimer;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => renderTable(), 150);
-});
+$('envcopy').onclick = () => copyEnvFile();
 
 document.addEventListener('keydown', (e) => {
   const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
   if (e.key === 'Escape') {
     if (modalOpen()) return closeModal();
-    if (state.editing) { state.editing = null; return renderTable(); }
-    if (document.activeElement === $('q') && state.q) { state.q = ''; $('q').value = ''; return renderTable(); }
-    if (state.selected) { state.selected = null; renderTable(); renderInspector(); }
+    if (state.editing) { state.editing = null; renderTree(); return renderDetail(); }
+    if (document.activeElement === $('q') && state.q) { state.q = ''; $('q').value = ''; return renderTree(); }
+    if (state.selected) { state.selected = null; renderTree(); renderDetail(); }
     return;
   }
   if (typing || modalOpen()) return;
@@ -1515,9 +1446,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 load().catch((err) => {
-  $('daemon').className = 'badge err';
-  $('daemon').textContent = '연결 실패';
-  toast('오류: ' + err.message);
+  $('cards').textContent = '';
+  const card = el('div', 'card tone-err');
+  card.append(el('div', 'label', '데몬 연결'), el('div', 'main', '실패'), el('div', 'sub', 'dkc daemon start'));
+  $('cards').append(card);
+  $('right').textContent = '';
+  $('right').append(el('div', 'blank', err.message));
 });
 </script>
 </body>

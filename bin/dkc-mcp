@@ -4,5 +4,12 @@
 # Claude Code / Codex가 세션마다 이 스크립트를 직접 실행한다. 두 클라이언트 모두
 # 터미널과 다른 셸 환경에서 하위 프로세스를 띄우므로 PATH에 node가 없을 수 있다 —
 # 등록할 때는 이 파일의 **절대 경로**를 쓰고, 필요하면 아래 node를 절대 경로로 바꿔라.
+# NODE_COMPILE_CACHE: 타입 스트리핑 결과와 V8 코드 캐시를 재사용한다.
+#   빌드 단계를 들이지 않고 `.ts` 직접 실행의 고정비를 걷어내는 방법이다
+#   (어댑터 기준 RSS 86MB → 55MB, 기동 86ms → 56ms 실측).
+#   소스가 바뀌면 Node가 알아서 새 항목을 만든다 — 수동 재생성이 필요 없고,
+#   "파일을 고치면 바로 반영된다"는 전제가 그대로 유지된다.
+export NODE_COMPILE_CACHE="${NODE_COMPILE_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/devkit/node-compile}"
+
 exec node --disable-warning=ExperimentalWarning \
   "$(cd "$(dirname "$0")/.." && pwd)/apps/config-provider/src/mcp.ts" "$@"

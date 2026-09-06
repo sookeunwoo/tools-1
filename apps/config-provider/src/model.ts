@@ -30,6 +30,33 @@ export type Item = {
 
 const KNOWN_FIELDS = new Set(['key', 'resource_type', 'alias', 'value', 'desc', 'ref']);
 
+/**
+ * 등록된 종류(resource_type) 목록.
+ *
+ * 자유 입력으로 두면 같은 것을 `api_key`·`api-key`·`apikey`로 적게 되고, 그 순간
+ * 종류로 묶어보는 일이 불가능해진다. 그래서 화면과 API 모두 이 목록 안에서만 고른다.
+ *
+ * 파일을 손으로 고쳐 목록 밖의 값을 넣는 것은 막지 않는다 — 저장소의 진실은 파일이고,
+ * 기동을 실패시켜 값을 못 보게 만드는 건 과한 대가다. UI는 그런 값을 '기존 값'으로
+ * 그대로 보여주되, 새로 고를 때는 이 목록을 쓴다.
+ */
+export const RESOURCE_TYPES = [
+  { value: 'endpoint', label: '엔드포인트 · 호스트' },
+  { value: 'database', label: '데이터베이스' },
+  { value: 'password', label: '비밀번호' },
+  { value: 'api_key', label: 'API 키 · 토큰' },
+  { value: 'oauth', label: 'OAuth 클라이언트' },
+  { value: 'certificate', label: '인증서 · 개인키' },
+  { value: 'topic', label: '토픽 · 큐' },
+  { value: 'bucket', label: '버킷 · 스토리지' },
+  { value: 'webhook', label: '웹훅' },
+  { value: 'feature_flag', label: '기능 플래그' },
+  { value: 'account', label: '계정 · 사용자명' },
+  { value: 'other', label: '기타' },
+] as const;
+
+export const RESOURCE_TYPE_VALUES: readonly string[] = RESOURCE_TYPES.map((t) => t.value);
+
 export function parseDocument(text: string, visibility: Visibility, source: string, opts: { locked?: boolean } = {}): Item[] {
   let doc: YamlNode;
   try {

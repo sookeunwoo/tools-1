@@ -19,7 +19,7 @@
     "#config/*": "./apps/config-provider/src/*"
   },
   "scripts": {
-    "test": "node --disable-warning=ExperimentalWarning --test 'packages/*/test/*.test.ts' 'apps/*/test/*.test.ts' 'plugins/*/test/*.test.ts'",
+    "test": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'packages/*/test/*.test.ts' 'apps/*/test/*.test.ts' 'plugins/*/test/*.test.ts'",
     "dk": "./bin/dk",
     "dkc": "./bin/dkc"
   }

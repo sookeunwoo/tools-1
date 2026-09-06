@@ -14,7 +14,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { DevkitError, toDevkitError } from '#core/errors.ts';
 import { call, callOrThrow } from './client.ts';
-import { DEFAULT_ENV } from './api.ts';
+import { DEFAULT_ENV } from './defaults.ts';
 import { policyPath, publicPath, secretPath, socketPath, sopsRulesPath, storeRoot, uiPort } from './paths.ts';
 import { recipientCount, version as sopsVersion } from './sops.ts';
 

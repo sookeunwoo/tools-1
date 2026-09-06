@@ -11,13 +11,17 @@
 import { DevkitError, toDevkitError } from '#core/errors.ts';
 import { current, reload, replaceItem } from './cache.ts';
 import { findAliasOwner, search } from './alias.ts';
-import { metaVersion, type Item, type Visibility } from './model.ts';
+import { metaVersion, RESOURCE_TYPES, RESOURCE_TYPE_VALUES, type Item, type Visibility } from './model.ts';
 import { maxVisibility, resolveValue } from './resolve.ts';
 import { decideAliasWrite, decideValue, loadPolicy, type Caller, type Policy } from './policy.ts';
 import { withFileLock, writeItems } from './store.ts';
+import { DEFAULT_ENV } from './defaults.ts';
+import {
+  assertNameFree, loadCollections, moveKey, normalizeName, reconcile, requireCollection,
+  saveCollections, uncategorized, type Collection,
+} from './collections.ts';
 
-/** env 파라미터 생략 시 기본값. prod 조회는 항상 명시적이어야 한다 (스펙 §4.2). */
-export const DEFAULT_ENV = 'dev';
+export { DEFAULT_ENV } from './defaults.ts';
 
 export type ApiRequest = {
   method: string;
@@ -75,6 +79,7 @@ async function route(req: ApiRequest): Promise<ApiResponse> {
       policyPath: p.path,
       loadedAt: new Date(s.loadedAt).toISOString(),
       defaultEnv: DEFAULT_ENV,
+      resourceTypes: RESOURCE_TYPES,
     });
   }
 
@@ -91,6 +96,19 @@ async function route(req: ApiRequest): Promise<ApiResponse> {
   if (m === 'GET' && seg[0] === 'config' && seg[1]) return getValue(req, seg.slice(1).join('/'));
 
   if (seg[0] === 'value' && seg[1] && m === 'PUT') return await putValue(req, seg.slice(1).join('/'));
+
+  if (seg[0] === 'collections') {
+    if (m === 'GET' && !seg[1]) return collectionList();
+    if (m === 'POST' && !seg[1]) return await collectionCreate(req);
+    if (seg[1] && seg[2] === 'keys' && seg[3]) {
+      if (m === 'PUT') return await collectionMoveKey(req, seg[1], seg.slice(3).join('/'));
+      if (m === 'DELETE') return await collectionDropKey(req, seg[1], seg.slice(3).join('/'));
+    }
+    if (seg[1] && !seg[2]) {
+      if (m === 'PUT') return await collectionUpdate(req, seg[1]);
+      if (m === 'DELETE') return await collectionDelete(req, seg[1]);
+    }
+  }
 
   if (seg[0] === 'alias') {
     if (m === 'GET' && seg[1] === 'search') return aliasSearch(req);
@@ -216,6 +234,112 @@ function aliasGet(key: string): ApiResponse {
 }
 
 // ---------------------------------------------------------------------------
+// 컬렉션 — 값이 아니라 "정리"를 다루는 경로다. 항목 파일을 건드리지 않는다.
+// ---------------------------------------------------------------------------
+
+/** 저장된 목록 + 현재 항목과의 정합. 조회 결과는 항상 미분류까지 포함한다. */
+function collectionsNow(): { list: Collection[]; keys: string[] } {
+  const keys = current().items.map((it) => it.key);
+  return { list: reconcile(loadCollections(), new Set(keys)), keys };
+}
+
+function collectionList(): ApiResponse {
+  const { list, keys } = collectionsNow();
+  return ok({ collections: list, uncategorized: uncategorized(list, keys) });
+}
+
+/**
+ * 컬렉션 쓰기의 단일 통로.
+ *
+ * 항목 파일과 다른 락을 쓴다 — 컬렉션 편집이 값 편집을 막을 이유가 없고,
+ * 축소 모드에서도 동작해야 하기 때문이다(secret 재암호화 경로를 타지 않는다).
+ */
+async function withCollections(req: ApiRequest, what: string, fn: (list: Collection[], keys: string[]) => Collection[]): Promise<ApiResponse> {
+  requireOwner(req, what);
+  return withFileLock('collections', async () => {
+    const { list, keys } = collectionsNow();
+    const next = fn(list, keys);
+    saveCollections(next);
+    return ok({ collections: next, uncategorized: uncategorized(next, keys) });
+  });
+}
+
+function collectionCreate(req: ApiRequest): Promise<ApiResponse> {
+  const name = normalizeName(asObject(req.body).name);
+  return withCollections(req, '컬렉션 생성', (list) => {
+    assertNameFree(list, name);
+    return [...list, { name, keys: [] }];
+  });
+}
+
+/** 이름 변경과 키 집합 교체를 한 곳에서 받는다. UI의 드래그 정렬도 이 경로를 쓴다. */
+function collectionUpdate(req: ApiRequest, target: string): Promise<ApiResponse> {
+  const body = asObject(req.body);
+  return withCollections(req, '컬렉션 수정', (list, keys) => {
+    const before = requireCollection(list, target);
+    const renamed = body.name === undefined ? before.name : normalizeName(body.name);
+    if (renamed !== before.name) assertNameFree(list, renamed);
+
+    let nextKeys = before.keys;
+    if (body.keys !== undefined) {
+      if (!Array.isArray(body.keys) || body.keys.some((k) => typeof k !== 'string')) {
+        throw invalid('keys는 문자열 배열이어야 합니다');
+      }
+      const known = new Set(keys);
+      for (const k of body.keys as string[]) {
+        if (!known.has(k)) {
+          throw new DevkitError({
+            code: 'KEY_NOT_FOUND',
+            message: `정의되지 않은 key: ${k}`,
+            hint: '컬렉션에는 실제로 존재하는 key만 넣을 수 있습니다.',
+            retryable: false,
+          });
+        }
+      }
+      nextKeys = [...new Set(body.keys as string[])];
+    }
+    // 키 집합을 통째로 교체하면 다른 컬렉션에 있던 key를 데려온 것일 수 있다. 중복 소속을 막는다.
+    const claimed = new Set(nextKeys);
+    return list.map((c) =>
+      c.name === target
+        ? { name: renamed, keys: nextKeys }
+        : { ...c, keys: c.keys.filter((k) => !claimed.has(k)) });
+  });
+}
+
+/** 컬렉션만 지운다. 안에 있던 key는 미분류로 돌아갈 뿐 삭제되지 않는다. */
+function collectionDelete(req: ApiRequest, target: string): Promise<ApiResponse> {
+  return withCollections(req, '컬렉션 삭제', (list) => {
+    requireCollection(list, target);
+    return list.filter((c) => c.name !== target);
+  });
+}
+
+function collectionMoveKey(req: ApiRequest, target: string, key: string): Promise<ApiResponse> {
+  return withCollections(req, '컬렉션 이동', (list, keys) => {
+    if (!keys.includes(key)) {
+      throw new DevkitError({
+        code: 'KEY_NOT_FOUND',
+        message: `정의되지 않은 key: ${key}`,
+        hint: '먼저 항목을 만든 뒤 컬렉션에 넣으세요.',
+        retryable: false,
+      });
+    }
+    return moveKey(list, target, key);
+  });
+}
+
+function collectionDropKey(req: ApiRequest, target: string, key: string): Promise<ApiResponse> {
+  return withCollections(req, '컬렉션에서 빼기', (list) => {
+    const c = requireCollection(list, target);
+    if (!c.keys.includes(key)) {
+      throw new DevkitError({ code: 'KEY_NOT_FOUND', message: `${target}에 ${key}가 없습니다`, retryable: false });
+    }
+    return list.map((x) => (x.name === target ? { ...x, keys: x.keys.filter((k) => k !== key) } : x));
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 편집
 // ---------------------------------------------------------------------------
 
@@ -268,7 +392,7 @@ async function aliasReplace(req: ApiRequest, key: string): Promise<ApiResponse> 
   }
   if (body.desc !== undefined) next.desc = nullableStr(body.desc, 'desc');
   if (body.ref !== undefined) next.ref = nullableStr(body.ref, 'ref');
-  if (body.resource_type !== undefined) next.resourceType = nullableStr(body.resource_type, 'resource_type');
+  if (body.resource_type !== undefined) next.resourceType = resourceType(body.resource_type);
 
   // key와 value는 이 경로로 절대 바뀌지 않는다 (스펙 §4.5). 요청에 실려와도 무시가 아니라 거부한다.
   if ('key' in body || 'value' in body) {
@@ -319,7 +443,7 @@ async function createItem(req: ApiRequest): Promise<ApiResponse> {
   const visibility: Visibility = body.visibility === 'secret' ? 'secret' : 'public';
   const item: Item = {
     key,
-    resourceType: nullableStr(body.resource_type ?? null, 'resource_type'),
+    resourceType: resourceType(body.resource_type ?? null),
     alias: Array.isArray(body.alias) ? (body.alias as string[]).filter((a) => typeof a === 'string') : [],
     value: { prod: null, dev: null },
     desc: nullableStr(body.desc ?? null, 'desc'),
@@ -440,6 +564,22 @@ function str(v: unknown, field: string): string {
   return v;
 }
 
+/** 종류는 등록된 목록 안에서만 고른다. 같은 개념이 여러 철자로 갈라지는 걸 막는다. */
+function resourceType(v: unknown): string | null {
+  const value = nullableStr(v, 'resource_type');
+  if (value === null || value === '') return null;
+  if (!RESOURCE_TYPE_VALUES.includes(value)) {
+    throw new DevkitError({
+      code: 'INPUT_INVALID',
+      message: `등록되지 않은 종류입니다: ${value}`,
+      hint: `쓸 수 있는 값: ${RESOURCE_TYPE_VALUES.join(', ')}. 목록을 늘리려면 model.ts의 RESOURCE_TYPES에 추가하세요.`,
+      retryable: false,
+      details: { allowed: RESOURCE_TYPE_VALUES },
+    });
+  }
+  return value;
+}
+
 function nullableStr(v: unknown, field: string): string | null {
   if (v === null) return null;
   if (typeof v !== 'string') throw invalid(`${field}는 문자열이거나 null이어야 합니다`);
@@ -454,6 +594,7 @@ function statusOf(code: string): number {
   switch (code) {
     case 'KEY_NOT_FOUND':
     case 'ALIAS_NOT_FOUND':
+    case 'COLLECTION_NOT_FOUND':
     case 'ROUTE_NOT_FOUND':
       return 404;
     case 'POLICY_DENIED':
@@ -461,6 +602,7 @@ function statusOf(code: string): number {
     case 'ALIAS_CONFLICT':
     case 'VERSION_CONFLICT':
     case 'KEY_EXISTS':
+    case 'COLLECTION_EXISTS':
     case 'STORE_LOCK_BUSY':
       return 409;
     case 'INPUT_INVALID':
