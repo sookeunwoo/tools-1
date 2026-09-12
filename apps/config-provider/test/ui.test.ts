@@ -20,6 +20,7 @@ test('UI는 loopback에 바인딩하면서 고정 localhost 이름을 공개하�
   const ui = await start({ port: 0 });
   try {
     const url = new URL(ui.url);
+    assert.equal(ui.address, '127.0.0.1');
     assert.equal(url.hostname, 'config-provider.localhost');
 
     const response = await get(Number(url.port), 'config-provider.localhost');
