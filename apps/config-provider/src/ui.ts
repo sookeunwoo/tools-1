@@ -18,6 +18,7 @@ import { call } from './client.ts';
 import { uiPort } from './paths.ts';
 
 const HTML = () => readFileSync(join(import.meta.dirname, 'ui.html'), 'utf8');
+const UI_HOSTNAME = 'config-provider.localhost';
 
 export type UiHandle = { close: () => Promise<void>; url: string };
 
@@ -33,7 +34,7 @@ export async function start(opts: { port?: number; host?: string } = {}): Promis
     server.listen(port, host, resolve);
   });
 
-  const url = `http://${host}:${(server.address() as { port: number }).port}`;
+  const url = `http://${UI_HOSTNAME}:${(server.address() as { port: number }).port}`;
   return {
     url,
     close: () => new Promise<void>((r) => server.close(() => r())),
@@ -46,7 +47,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   // 브라우저가 아닌 곳에서 온 요청은 거절한다. loopback 바인딩 위의 얇은 이중 방어로,
   // DNS 리바인딩으로 다른 호스트명을 태워 보내는 경로를 막는다.
   const host = (req.headers.host ?? '').split(':')[0];
-  if (host !== '127.0.0.1' && host !== 'localhost' && host !== '[::1]') {
+  if (host !== '127.0.0.1' && host !== 'localhost' && host !== '[::1]' && host !== UI_HOSTNAME) {
     res.writeHead(403).end('loopback 전용입니다');
     return;
   }
